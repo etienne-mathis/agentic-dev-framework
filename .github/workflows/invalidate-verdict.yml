@@ -1,0 +1,60 @@
+name: invalidate-verdict
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  reset-review-state:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reset status label to needs-review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Aktuelles status:-Label lesen
+          STATUS=$(gh pr view "$PR" --repo "$REPO" --json labels \
+            --jq '[.labels[].name | select(startswith("status:"))] | first // empty')
+
+          # Nur invalidieren wenn ein Reviewer- oder CSO-Verdikt vorliegt
+          case "$STATUS" in
+            status:changes-requested|\
+            status:security-review|\
+            status:security-blocked|\
+            status:approved)
+              # Mehrere status:-Labels sind ein Bug — warnen
+              COUNT=$(gh pr view "$PR" --repo "$REPO" --json labels \
+                --jq '[.labels[].name | select(startswith("status:"))] | length')
+              if [ "$COUNT" -gt 1 ]; then
+                echo "WARNUNG: $COUNT status:-Labels gefunden. Nur erstes wird verarbeitet." >&2
+              fi
+
+              # PR-Label zurücksetzen
+              gh pr edit "$PR" --repo "$REPO" \
+                --remove-label "$STATUS" \
+                --add-label "status:needs-review"
+
+              echo "AUTO: Label $STATUS → status:needs-review (PR #$PR)" >&2
+
+              # Story-Issue spiegeln: closes #<nr> aus PR-Body parsen
+              STORY_NR=$(gh pr view "$PR" --repo "$REPO" --json body \
+                --jq '.body | ascii_downcase | match("closes #([0-9]+)").captures[0].string // empty')
+
+              if [ -n "$STORY_NR" ]; then
+                gh issue edit "$STORY_NR" --repo "$REPO" \
+                  --remove-label "$STATUS" \
+                  --add-label "status:needs-review" 2>/dev/null || \
+                  echo "Story-Issue #$STORY_NR hat kein Label $STATUS — übersprungen." >&2
+                echo "AUTO: Story-Issue #$STORY_NR ebenfalls zurückgesetzt." >&2
+              fi
+              ;;
+            *)
+              echo "Status '$STATUS' erfordert keine Invalidierung." >&2
+              ;;
+          esac

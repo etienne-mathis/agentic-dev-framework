@@ -1,0 +1,44 @@
+name: protected-paths
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Block protected paths
+        env:
+          OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'human-override:protected-paths') }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)
+
+          # Geschützte Pfade: Agent-Konfiguration, CI, Framework-Protokoll
+          # Erweiterung durch induzierten Patch: docs/PROTOCOL.md ebenfalls geschützt
+          BLOCKED=$(echo "$CHANGED" | grep -E \
+            '^(\.claude/|\.github/|CLAUDE\.md$|docs/PROTOCOL\.md$)' || true)
+
+          if [ -z "$BLOCKED" ]; then
+            echo "Keine geschützten Pfade betroffen."
+            exit 0
+          fi
+
+          echo "Betroffene geschützte Pfade:"
+          echo "$BLOCKED"
+
+          if [ "$OVERRIDE" = "true" ]; then
+            echo "human-override:protected-paths gesetzt — Änderungen erlaubt."
+            echo "Überprüfe manuell, ob die Änderungen beabsichtigt sind."
+            exit 0
+          fi
+
+          echo ""
+          echo "FEHLER: Änderungen an geschützten Pfaden erfordern das Label"
+          echo "'human-override:protected-paths' (nur durch den Menschen setzbar)."
+          exit 1

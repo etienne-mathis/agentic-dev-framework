@@ -1,0 +1,4 @@
+# CODEOWNERS — alle Dateien erfordern einen menschlichen Review vor dem Merge.
+# <github-handle> ersetzen mit dem Handle aus CLAUDE.md Projektkonfiguration.
+
+* @<github-handle>
