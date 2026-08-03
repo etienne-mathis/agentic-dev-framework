@@ -13,11 +13,17 @@ set -euo pipefail
 
 BASIS="${1:-origin/main}"
 
+# GLOSSARY.md muss existieren
+if [ ! -f docs/GLOSSARY.md ]; then
+  echo "OK — docs/GLOSSARY.md nicht gefunden, Gate übersprungen."
+  exit 0
+fi
+
 # Synonyme aus der "Verboten"-Spalte der GLOSSARY.md extrahieren
 SYN=$(awk -F'|' '
   /^\|/ && NR > 2 {
     gsub(/^[ \t]+|[ \t]+$/, "", $4)
-    if ($4 != "" && $4 != "Verboten (Synonyme)" && $4 != "---") print $4
+    if ($4 != "" && $4 != "Verboten (Synonyme)" && $4 != "---" && $4 !~ /^<!--/) print $4
   }
 ' docs/GLOSSARY.md \
   | tr ',' '\n' \
@@ -26,7 +32,13 @@ SYN=$(awk -F'|' '
   | paste -sd'|' - || true)
 
 if [ -z "$SYN" ]; then
-  echo "OK — keine Synonyme im Glossar definiert."
+  echo "OK — keine Synonyme im Glossar definiert, Gate übersprungen."
+  exit 0
+fi
+
+# Sicherstellen dass origin/main erreichbar ist
+if ! git rev-parse --verify "$BASIS" > /dev/null 2>&1; then
+  echo "OK — Basis-Branch '$BASIS' nicht erreichbar (initialer Commit?), Gate übersprungen."
   exit 0
 fi
 

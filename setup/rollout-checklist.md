@@ -20,7 +20,7 @@ Geschätzte Dauer: ~45 Minuten für Phase 0.
   ```bash
   bash setup/labels.sh
   ```
-  Ergebnis prüfen: 18 Labels in Repo-Settings sichtbar.
+  Ergebnis prüfen: 23 Labels in Repo-Settings sichtbar.
 
 ### Branch Protection auf `main`
 
@@ -40,17 +40,24 @@ Geschätzte Dauer: ~45 Minuten für Phase 0.
 - [ ] Secret Scanning aktivieren (Repo-Settings → Security → Secret scanning)
 - [ ] Push Protection aktivieren
 
-### CI-Skeleton
+### CI einrichten
 
-- [ ] `.github/workflows/ci-skeleton.yml` umbenennen zu `ci.yml` und anpassen:
-  - Python-Version setzen
-  - `befehle.test`, `befehle.gate` aus CLAUDE.md eintragen
-  - Alle 4 Jobs aktivieren: `test`, `gates`, `audit`, `commitlint`
+Die drei Guard-Workflows (`invalidate-verdict.yml`, `guard-protected-paths.yml`, `guard-test-contract.yml`)
+sind bereits aktiv — kein Anpassen nötig, laufen auf jedem PR.
+
+Für den vollständigen CI (test, gates, audit, commitlint):
+
+- [ ] Template kopieren:
+  ```bash
+  cp setup/ci.yml.example .github/workflows/ci.yml
+  ```
+- [ ] `ci.yml` öffnen und befüllen:
+  - Python- oder Node-Version eintragen (`<<<PYTHON_VERSION>>>` oder `<<<NODE_VERSION>>>`)
+  - Test-, Lint- und Typecheck-Befehle aus dem Projekt eintragen (alle `<<<BEFEHLE_*>>>`)
+  - Nicht genutzten Stack vollständig entfernen (Python ODER Node, nicht beides)
 - [ ] `pyproject.toml` mit `[[tool.importlinter.contracts]]` für Layer-Regeln befüllen
   (oder `dependency-cruiser` für Node-Projekte)
-
-Die Workflows `invalidate-verdict.yml`, `guard-protected-paths.yml` und `guard-test-contract.yml`
-sind bereits aktiv (kein Anpassen nötig).
+- [ ] Committen und auf grüne Checks warten
 
 **Required Status Checks in Branch Protection (nach CI-Aktivierung):**
 `test` · `gates` · `audit` · `commitlint` · `protected-paths` · `test-contract` · `invalidate-verdict`

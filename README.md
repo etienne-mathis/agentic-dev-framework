@@ -472,7 +472,19 @@ Enthält: Scope-Tabelle mit Layer und Pfaden, technische Vorgaben (Port/Adapter)
 
 ## 9 — CI-Setup
 
-Das Framework liefert `.github/workflows/ci-skeleton.yml` — ein vollständig kommentierter Template-Workflow mit vier Jobs:
+### Sofort aktive Workflows (kein Setup nötig)
+
+Diese drei Workflows laufen automatisch auf jedem PR — ohne Konfiguration:
+
+| Workflow | Was er tut |
+|---|---|
+| `invalidate-verdict` | Neuer Commit auf PR → Label zurück auf `status:needs-review` |
+| `protected-paths` | Blockiert Änderungen an Framework-Dateien ohne Override-Label |
+| `test-contract` | Stellt sicher dass Acceptance-Tests nach Contract-Commit unveränderlich bleiben |
+
+### CI-Template einrichten (ca. 15 Minuten)
+
+Das Framework liefert `setup/ci.yml.example` — ein vollständig kommentiertes Template mit vier Jobs:
 
 | CI-Job | Prüft | Required Check |
 |---|---|---|
@@ -483,19 +495,26 @@ Das Framework liefert `.github/workflows/ci-skeleton.yml` — ein vollständig k
 
 **Erlaubte Commit-Typen:** `feat` · `fix` · `refactor` · `test` · `docs` · `chore`
 
-Außerdem bereits aktiv (kein Anpassen nötig):
-
-| CI-Job | Was er tut |
-|---|---|
-| `invalidate-verdict` | Neuer Commit auf PR → Label zurück auf `status:needs-review` |
-| `protected-paths` | Blockiert Änderungen an Framework-Dateien ohne Override-Label |
-| `test-contract` | Stellt sicher dass Acceptance-Tests nach Contract-Commit nicht verändert werden |
-
 **Aktivierung:**
 ```bash
-cp .github/workflows/ci-skeleton.yml .github/workflows/ci.yml
-# ci.yml öffnen und projektspezifisch befüllen
+# Template kopieren
+cp setup/ci.yml.example .github/workflows/ci.yml
+
+# Datei öffnen und befüllen:
+# 1. <<<PYTHON_VERSION>>> oder <<<NODE_VERSION>>> ersetzen
+# 2. <<<BEFEHLE_*>>> durch echte Befehle aus CLAUDE.md ersetzen
+# 3. Nicht genutzten Stack (Python ODER Node) löschen
+# 4. Committen
+
+# Branch Protection aktivieren:
+# Settings → Branches → main → Require status checks:
+# test · gates · audit · commitlint
 ```
+
+> **Warum liegt das Template in `setup/` und nicht in `.github/workflows/`?**
+> GitHub führt automatisch alle `.yml`-Dateien in `.github/workflows/` aus.
+> Ein Template mit Platzhaltern würde sofort fehlschlagen.
+> Erst nach dem Befüllen und Umbenennen gehört es nach `.github/workflows/`.
 
 ---
 

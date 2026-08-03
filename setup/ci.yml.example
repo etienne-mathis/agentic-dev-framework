@@ -1,0 +1,225 @@
+##############################################################################
+# CI-TEMPLATE für das Agentic Dev Framework
+#
+# SETUP-ANLEITUNG (einmalig, ca. 15 Minuten):
+#   1. Diese Datei nach .github/workflows/ci.yml kopieren
+#   2. Deinen Stack wählen (Python ODER Node — nicht beides)
+#   3. Alle <<<PLACEHOLDER>>> durch echte Werte ersetzen
+#   4. Nicht benötigte Abschnitte löschen
+#   5. Committen und auf grüne Checks warten
+#
+# PFLICHT: Nach der Aktivierung diese Required Checks in GitHub eintragen:
+#   Settings → Branches → main → Require status checks:
+#   test · gates · audit · commitlint
+##############################################################################
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  # push auf main ist optional — nur aktivieren wenn gewünscht:
+  # push:
+  #   branches: [main]
+
+##############################################################################
+# ════════════════ PYTHON-STACK (uv) ════════════════════════════════════════
+# Für andere Package-Manager: uv → pip, poetry, oder conda
+##############################################################################
+
+jobs:
+
+  # ── test ──────────────────────────────────────────────────────────────────
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Python Setup ──────────────────────────────────────────────────────
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "<<<PYTHON_VERSION>>>"     # z.B. "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync --frozen                           # ← erfordert pyproject.toml
+
+      # ── Node Setup (ALTERNATIVE — Python-Abschnitt oben löschen) ─────────
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "<<<NODE_VERSION>>>"       # z.B. "20"
+      # - run: npm ci
+
+      - name: Run tests
+        run: |
+          <<<BEFEHLE_TEST>>>
+          # Python-Beispiel:  uv run pytest
+          # Node-Beispiel:    npm test
+
+  # ── gates ─────────────────────────────────────────────────────────────────
+  gates:
+    name: gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # nötig für diff-cover und glossar_gate.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "<<<PYTHON_VERSION>>>"
+
+      # ── Node Alternative ──────────────────────────────────────────────────
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "<<<NODE_VERSION>>>"
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync --frozen
+          # Node: npm ci
+
+      - name: Lint
+        run: |
+          <<<BEFEHLE_LINT>>>
+          # Python:  uv run ruff check .
+          # Node:    npm run lint
+
+      - name: Typecheck
+        run: |
+          <<<BEFEHLE_TYPECHECK>>>
+          # Python:  uv run mypy src
+          # Node:    npm run typecheck   (oder: npx tsc --noEmit)
+          # Skip:    echo "no typecheck configured"
+
+      - name: Test with coverage
+        run: |
+          <<<BEFEHLE_TEST_MIT_COVERAGE>>>
+          # Python:  uv run pytest --cov --cov-report=xml
+          # Node:    npm run test:coverage
+
+      - name: Coverage diff (changed lines ≥ 90%)
+        run: |
+          <<<BEFEHLE_COVERAGE_DIFF>>>
+          # Python:
+          #   pip install diff-cover
+          #   diff-cover coverage.xml --compare-branch=origin/main --fail-under=90
+          # Node:
+          #   npx diff-cover --compare-branch origin/main --min-coverage 90
+
+      - name: Layer / Import check
+        run: |
+          <<<BEFEHLE_LAYER_CHECK>>>
+          # Python mit import-linter:
+          #   uv run lint-imports      (erfordert pyproject.toml [[tool.importlinter.contracts]])
+          # Node mit dependency-cruiser:
+          #   npx depcruise src --config .dependency-cruiser.js
+          # Skip wenn nicht konfiguriert:
+          #   echo "layer check not configured yet"
+
+      - name: Glossar-Gate
+        run: |
+          bash scripts/glossar_gate.sh
+          # Prüft verbotene Synonyme aus docs/GLOSSARY.md im Diff.
+          # Schlägt fehl wenn GLOSSARY.md leer ist — mind. 5 Begriffe eintragen!
+          # Zum Deaktivieren: echo "skip" statt dem bash-Befehl.
+
+  # ── audit ─────────────────────────────────────────────────────────────────
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read block_ab threshold from CLAUDE.md
+        id: threshold
+        run: |
+          BLOCK_AB=$(grep 'block_ab:' CLAUDE.md | head -1 | grep -oE '(critical|high|medium|low)' || echo "high")
+          echo "block_ab=$BLOCK_AB" >> "$GITHUB_OUTPUT"
+
+      # ── Python: pip-audit ─────────────────────────────────────────────────
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "<<<PYTHON_VERSION>>>"
+
+      - name: Install pip-audit
+        run: pip install pip-audit uv && uv sync --frozen
+
+      - name: Run pip-audit
+        run: |
+          BLOCK_AB="${{ steps.threshold.outputs.block_ab }}"
+          pip-audit --format json -o /tmp/audit.json 2>/dev/null || true
+
+          python3 - "$BLOCK_AB" /tmp/audit.json << 'PYEOF'
+          import json, sys
+          SEVERITY_ORDER = ["low", "medium", "high", "critical"]
+          block_ab = sys.argv[1]
+          threshold = SEVERITY_ORDER.index(block_ab) if block_ab in SEVERITY_ORDER else 2
+          with open(sys.argv[2]) as f:
+              data = json.load(f)
+          blocking = [
+              f"{dep['name']}=={dep.get('version','?')} {v['id']}"
+              for dep in data.get("dependencies", [])
+              for v in dep.get("vulns", [])
+          ]
+          if blocking:
+              print("Blocking vulnerabilities:")
+              for b in blocking: print(f"  {b}")
+              sys.exit(1)
+          print("pip-audit: no blocking vulnerabilities found.")
+          PYEOF
+
+      # ── Node Alternative: npm audit ───────────────────────────────────────
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "<<<NODE_VERSION>>>"
+      # - run: npm ci
+      # - run: npm audit --audit-level=${{ steps.threshold.outputs.block_ab }}
+
+  # ── commitlint ────────────────────────────────────────────────────────────
+  # Prüft alle Commits im PR auf die Konvention:
+  #   type(scope): kurze beschreibung (#issue-nr)
+  # Erlaubte Typen: feat | fix | refactor | test | docs | chore
+  # Kein Stack-Dependency — funktioniert auf jedem Projekt out-of-the-box.
+  commitlint:
+    name: commitlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=50
+
+          PATTERN='^(feat|fix|refactor|test|docs|chore)(\([a-z0-9_-]+\))?: .{1,100} \(#[0-9]+\)$'
+          FAILED=0
+
+          while IFS= read -r MSG; do
+            if ! echo "$MSG" | grep -qE "$PATTERN"; then
+              echo "::error::Ungültige Commit-Message: '$MSG'"
+              echo "  Erwartet: type(scope): kurze beschreibung (#issue-nr)"
+              echo "  Typen:    feat | fix | refactor | test | docs | chore"
+              FAILED=1
+            fi
+          done < <(git log "origin/${{ github.base_ref }}..HEAD" --format="%s")
+
+          [ "$FAILED" -eq 1 ] && exit 1 || echo "commitlint: all messages valid."
+
+##############################################################################
+# NACH DEM BEFÜLLEN:
+#
+# 1. Alle <<<PLACEHOLDER>>> müssen ersetzt oder gelöscht sein
+# 2. Nicht genutzten Stack (Python ODER Node) vollständig entfernen
+# 3. Diese Kommentarblöcke können gelöscht werden
+# 4. Branch Protection aktivieren:
+#    Settings → Branches → main → Require status checks:
+#    test · gates · audit · commitlint
+#    (Namen müssen exakt mit den job.name-Feldern übereinstimmen)
+##############################################################################
