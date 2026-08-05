@@ -139,6 +139,7 @@ nur so kann die Retro nach `reason` aggregieren:
 | `scope-wachstum` | architect |
 | `zyklische-abhaengigkeit` | architect |
 | `epic-dor-verletzt` | architect |
+| `epic-bereits-implementiert` | architect |
 | `ac-nicht-umsetzbar` | developer |
 | `breaking-change` | developer |
 | `aufwand-ueberschritten` | developer |

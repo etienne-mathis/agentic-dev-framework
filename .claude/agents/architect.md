@@ -194,8 +194,12 @@ EOF
 # Preflight im Entwurfs-Modus gegen die aktuelle Codebase laufen lassen
 bash scripts/preflight.sh --body-file /tmp/story-draft.md \
   --title "<story-titel>" --source-dir .
-PF=$?   # 0 = ok · 10 = Existenz-Warnung · 20 = (Budget, hier irrelevant)
 ```
+
+**Wichtig: Entscheide am TEXT-Output, nicht nur am Exit-Code.** Exit 10 = starkes Signal.
+ABER Exit 0 hat ZWEI Bedeutungen — "SCHWACHER HINWEIS" und "kein Signal" — die sich nur
+im Text unterscheiden. Ein Exit 0 heißt also NICHT automatisch "Story anlegen". Lies immer
+die Zeilen `WARNUNG`, `HINWEIS an ARCHITECT` bzw. `kein eindeutiger Existenz-Identifier`.
 
 Handle das Ergebnis:
 
@@ -211,6 +215,15 @@ die DEVELOPER-Session das passende Modell wählen kann.
 
 Verwirf oder reframe alle Entwürfe mit starkem/bestätigtem Signal, BEVOR du in Schritt 2
 den Abhängigkeitsgraphen rechnest.
+
+**Sonderfall — Epic bereits vollständig implementiert:**
+Bleibt nach dem Existenz-Check KEIN einziger Neubau-Entwurf übrig (jeder Entwurf hat ein
+bestätigtes starkes Signal), dann ist das Epic bereits umgesetzt. Lege KEINE Stories an und
+poste KEINEN DEVELOPER-HANDOFF. Stattdessen:
+→ Am Epic kommentieren: je Entwurf die Fundstelle (`existiert bereits in <datei>`).
+→ ESCALATION `reason: epic-bereits-implementiert`, `detail`: die Fundstellen, `options`:
+  (a) Epic schließen, (b) auf reine Refactor/Extract-Arbeit umwidmen.
+→ needs-human, Session mit `ESCALATED` beenden. Der Mensch entscheidet.
 
 ---
 
@@ -323,6 +336,7 @@ Format: `- Begriff — Ein-Satz-Definition`. RETRO übernimmt sie in `docs/GLOSS
 - `architektur-entscheidung`: neuer Bounded Context oder externes System nötig
 - `scope-wachstum`: Epic-Scope wächst während der Zerlegung
 - `zyklische-abhaengigkeit`: Kahn-Algorithmus meldet Zyklus
+- `epic-bereits-implementiert`: Preflight bestätigt für jeden Entwurf, dass die Funktionalität schon existiert
 
 ---
 
@@ -330,4 +344,6 @@ Format: `- Begriff — Ein-Satz-Definition`. RETRO übernimmt sie in `docs/GLOSS
 
 Input formalisiert (falls Phase A) · DoR-Gate bestanden · Splitting-Algorithmus dokumentiert ·
 Existenz-Check (Preflight) für jeden Entwurf gelaufen, redundante Stories verworfen/reframed ·
-Zyklus-Freiheit nachgewiesen · HANDOFF gepostet · Session beenden.
+Zyklus-Freiheit nachgewiesen · Abschluss über genau einen Ausgang: HANDOFF an DEVELOPER
+(mindestens eine Story angelegt), ESCALATED (z. B. epic-bereits-implementiert / DoR-Verletzung)
+oder QUEUE EMPTY · Session beenden.
