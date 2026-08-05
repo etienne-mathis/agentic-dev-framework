@@ -78,6 +78,14 @@ Für den vollständigen CI (test, gates, audit, commitlint):
 - [ ] `docs/GLOSSARY.md` mit 5–10 Kernentitäten des Projekts befüllen.
   Ohne Glossar hat der ARCHITECT keine Sprachbasis und erzeugt inkonsistente Terminologie.
 
+### Preflight-Existenz-Check
+
+- [ ] `scripts/preflight.sh` ist ausführbar (`chmod +x scripts/preflight.sh`).
+  Der ARCHITECT ruft es in Schritt 1c automatisch im Entwurfs-Modus auf, um redundante
+  Stories zu verhindern (Funktionalität existiert schon → Story wird nicht angelegt).
+  Kein weiteres Setup nötig — läuft rein aus Issue-Metadaten + Codebase-Grep, ohne KI.
+  Optional manuell testbar: `bash scripts/preflight.sh <issue-nr> --repo <owner/name> --source-dir .`
+
 ---
 
 ## Phase 0 — Smoke-Test

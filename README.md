@@ -140,6 +140,10 @@ Das ist der Kern des Systems.
 **3. ARCHITECT — Phase B: Epic → Stories**
 - DoR-Gate: alle Felder prüfen
 - Splitting-Algorithmus: Modul-Grenze → Größe → Deployment-Abhängigkeit
+- **Preflight-Existenz-Check** (`scripts/preflight.sh`): jeder Story-Entwurf wird ohne KI
+  gegen die Codebase geprüft. Existiert die Funktionalität schon (starkes Identifier-Signal),
+  wird die Story nicht als Neubau angelegt, sondern verworfen oder als Refactor reframed.
+  Verhindert redundante Stories. Liefert außerdem eine Modell-Empfehlung (Haiku/Sonnet/Opus).
 - Kahn-Algorithmus: Abhängigkeitsgraph, Zyklusprüfung, topologische Sortierung
 - Stories in korrekter Reihenfolge anlegen (`depends-on`-Felder zeigen auf existierende Nummern)
 - Nur abhängigkeitsfreie Stories bekommen `status:ready`

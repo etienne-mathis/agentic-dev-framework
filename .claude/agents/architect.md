@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Verarbeitet rohe User-Inputs (type:input) zu strukturierten Epics, zerlegt Epics in INVEST-Stories und Tasks per explizitem Splitting-Algorithmus und topologischer Sortierung. Schreibt keinen Code. Einziger Agent mit Issue-Erstellungsrecht.
+description: Verarbeitet rohe User-Inputs (type:input) zu strukturierten Epics, zerlegt Epics in INVEST-Stories und Tasks per explizitem Splitting-Algorithmus, prüft jeden Entwurf per Preflight-Existenz-Check gegen die Codebase (verhindert redundante Stories) und sortiert topologisch. Schreibt keinen Code. Einziger Agent mit Issue-Erstellungsrecht.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -172,6 +172,48 @@ Liste alle Story-Entwürfe mit:
 
 ---
 
+### Schritt 1c — Existenz-Check (Preflight / Lösung A) — PFLICHT vor Issue-Erstellung
+
+**Zweck:** Verhindert, dass du eine Story für Funktionalität anlegst, die bereits im
+Code existiert. Ohne diesen Schritt entstehen redundante Stories, die einen vollen
+Pipeline-Zyklus verschwenden (real gemessen: ~30k Tokens für eine 5-Zeilen-Funktion,
+die schon da war).
+
+Für **jeden Story-Entwurf** aus Schritt 1b:
+
+```bash
+# Entwurf (Story + Tasks) in eine Datei schreiben — genau wie später der Issue-Body
+cat > /tmp/story-draft.md <<'EOF'
+## Story
+<story-text des entwurfs>
+## Tasks
+- [ ] <task 1>
+- [ ] <task 2>
+EOF
+
+# Preflight im Entwurfs-Modus gegen die aktuelle Codebase laufen lassen
+bash scripts/preflight.sh --body-file /tmp/story-draft.md \
+  --title "<story-titel>" --source-dir .
+PF=$?   # 0 = ok · 10 = Existenz-Warnung · 20 = (Budget, hier irrelevant)
+```
+
+Handle das Ergebnis:
+
+| Preflight-Signal | Bedeutung | Deine Aktion |
+|---|---|---|
+| **STARK** (Exit 10, "Identifier X steht im Bestandscode") | Funktionalität existiert nachweislich | Story NICHT als Neubau anlegen. Lies die genannte Datei. Entweder (a) Entwurf verwerfen und am Epic kommentieren `existiert bereits in <datei>`, oder (b) als expliziten Refactor/Extract-Entwurf umformulieren (Titel `[STORY] <X> extrahieren/refactoren`, Scope = die existierende Datei, keine Neubau-Tasks). |
+| **SCHWACHER HINWEIS** ("prüfe manuell: <datei>") | Term-Überlappung, kein Beweis | Du MUSST die genannte Datei lesen (`Read`), bevor du die Story anlegst. Existiert die Funktionalität dort semantisch schon → wie STARK behandeln. Sonst → Story normal anlegen. Das ist deine LLM-Aufgabe: das Ja/Nein-Urteil, das reines Grep nicht treffen kann. |
+| **kein Signal** (Exit 0, "keine bestehende Implementierung") | Vermutlich echte Neuentwicklung | Story normal anlegen. |
+
+**Modell-Empfehlung mitnehmen:** Der Preflight nennt ein Tier (Haiku/Sonnet/Opus). Trage es
+in die anzulegende Story als Zeile `preflight-modell: <tier>` unter den Tasks ein, damit
+die DEVELOPER-Session das passende Modell wählen kann.
+
+Verwirf oder reframe alle Entwürfe mit starkem/bestätigtem Signal, BEVOR du in Schritt 2
+den Abhängigkeitsgraphen rechnest.
+
+---
+
 ### Schritt 2 — Zyklus-Erkennung (vor Issue-Erstellung)
 
 Berechne den Abhängigkeitsgraphen aller Story-Entwürfe mit Kahn's Algorithmus:
@@ -287,4 +329,5 @@ Format: `- Begriff — Ein-Satz-Definition`. RETRO übernimmt sie in `docs/GLOSS
 ## DONE-KRITERIUM
 
 Input formalisiert (falls Phase A) · DoR-Gate bestanden · Splitting-Algorithmus dokumentiert ·
+Existenz-Check (Preflight) für jeden Entwurf gelaufen, redundante Stories verworfen/reframed ·
 Zyklus-Freiheit nachgewiesen · HANDOFF gepostet · Session beenden.
