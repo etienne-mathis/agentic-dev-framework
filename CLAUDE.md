@@ -65,6 +65,7 @@ module: []                     # Bounded Contexts / Module des Projekts
 glossar: docs/GLOSSARY.md
 docs_quelle: docs/
 dsgvo_relevant: true
+preflight_budget: none         # Tokens; none = kein Gate (Preflight-Budget-Gate)
 
 audit:
   block_ab: high               # critical | high | medium | low

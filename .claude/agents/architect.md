@@ -196,18 +196,23 @@ bash scripts/preflight.sh --body-file /tmp/story-draft.md \
   --title "<story-titel>" --source-dir .
 ```
 
-**Wichtig: Entscheide am TEXT-Output, nicht nur am Exit-Code.** Exit 10 = starkes Signal.
-ABER Exit 0 hat ZWEI Bedeutungen — "SCHWACHER HINWEIS" und "kein Signal" — die sich nur
-im Text unterscheiden. Ein Exit 0 heißt also NICHT automatisch "Story anlegen". Lies immer
-die Zeilen `WARNUNG`, `HINWEIS an ARCHITECT` bzw. `kein eindeutiger Existenz-Identifier`.
+**Wichtig: Entscheide am TEXT-Output, nicht nur am Exit-Code.** Der Preflight kennt genau
+zwei Fälle: **STARK** (Exit 10, `WARNUNG … Identifier X steht im Bestandscode`) oder
+**kein Signal** (Exit 0, `Codebase-Scan: keine bestehende Implementierung erkannt`). Lies die
+Report-Zeilen, statt nur den Exit-Code zu prüfen.
+
+**Der Preflight ersetzt nicht dein Lesen.** Vor der Story-Erstellung liest du ohnehin die
+zentralen Dateien des betroffenen Moduls (aus `layer_mapping` / `module`). Der Preflight fängt
+nur den eindeutigen Fall ab (ein echter Identifier steht bereits im Code) — er ist kein Ersatz
+für das inhaltliche Prüfen, ob die Funktionalität semantisch schon existiert. Grep sieht nur
+wörtliche Bezeichner; das Ja/Nein-Urteil bei umschreibender Prosa triffst du selbst beim Lesen.
 
 Handle das Ergebnis:
 
 | Preflight-Signal | Bedeutung | Deine Aktion |
 |---|---|---|
 | **STARK** (Exit 10, "Identifier X steht im Bestandscode") | Funktionalität existiert nachweislich | Story NICHT als Neubau anlegen. Lies die genannte Datei. Entweder (a) Entwurf verwerfen und am Epic kommentieren `existiert bereits in <datei>`, oder (b) als expliziten Refactor/Extract-Entwurf umformulieren (Titel `[STORY] <X> extrahieren/refactoren`, Scope = die existierende Datei, keine Neubau-Tasks). |
-| **SCHWACHER HINWEIS** ("prüfe manuell: <datei>") | Term-Überlappung, kein Beweis | Du MUSST die genannte Datei lesen (`Read`), bevor du die Story anlegst. Existiert die Funktionalität dort semantisch schon → wie STARK behandeln. Sonst → Story normal anlegen. Das ist deine LLM-Aufgabe: das Ja/Nein-Urteil, das reines Grep nicht treffen kann. |
-| **kein Signal** (Exit 0, "keine bestehende Implementierung") | Vermutlich echte Neuentwicklung | Story normal anlegen. |
+| **kein Signal** (Exit 0, "keine bestehende Implementierung erkannt") | Vermutlich echte Neuentwicklung | Story anlegen — aber erst, nachdem du die zentralen Modul-Dateien gelesen und semantische Redundanz ausgeschlossen hast. |
 
 **Modell-Empfehlung mitnehmen:** Der Preflight nennt ein Tier (Haiku/Sonnet/Opus). Trage es
 in die anzulegende Story als Zeile `preflight-modell: <tier>` unter den Tasks ein, damit

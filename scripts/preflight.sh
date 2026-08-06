@@ -15,6 +15,9 @@
 #   (b) Lokaler Story-ENTWURF (ARCHITECT, vor Issue-Erstellung — Lösung A):
 #       ./preflight.sh --body-file /tmp/draft.md --title "..." --source-dir .
 #
+# Budget-Quelle (Priorität): --budget N  >  $PREFLIGHT_BUDGET (Env)  >
+#   preflight_budget: aus CLAUDE.md (bei gesetztem --source-dir)  >  kein Gate.
+#
 # Exit-Codes: 0 = GO   ·   10 = GO-MIT-WARNUNG (Existenz)   ·   20 = NO-GO (Budget)
 ###############################################################################
 set -euo pipefail
@@ -41,10 +44,6 @@ TIME_OPUS=25
 # konfiguriert ist, drohen Re-Submission-Zyklen (real bei Story #5 passiert).
 CYCLE_RISK_MULTIPLIER=15  # +50% als Ganzzahl-Faktor: 15 = *1.5 (÷10)
 
-# Codebase-Scan: ab wie vielen DISTINKTEN feature-spezifischen Termen in EINER
-# bestehenden Datei gilt Funktionalität als "existiert vermutlich schon".
-EXISTENCE_THRESHOLD=2
-
 # Verzeichnisse/Muster die der Codebase-Scan ignoriert:
 # Vendor/Build/Tests + Framework-Meta-Dateien (die sind kein Projekt-Quellcode).
 SCAN_EXCLUDES='node_modules|vendor|stripe-php|dist|build|/tests/|\.min\.|\.claude/|\.github/|/docs/|/setup/|/scripts/|CLAUDE\.md|README|GLOSSARY|PROTOCOL'
@@ -54,14 +53,6 @@ SCAN_EXCLUDES='node_modules|vendor|stripe-php|dist|build|/tests/|\.min\.|\.claud
 # Deliverable der Story. Dann darf er KEIN starkes Existenz-Signal auslösen.
 # (Adversarialer Fund #10: "bestehende fetchOrders-Funktion nutzen" ist Reuse, kein Neubau.)
 DEP_MARKERS='bestehend|vorhanden|existierend|existing|nutzen|verwenden|wiederverwend|reuse|über die|ueber die|via'
-
-# Mindestlänge eines Kandidaten-Terms (kürzere sind zu generisch/verrauscht)
-TERM_MIN_LEN=4
-
-# Stopwords: Prosa + Template-Boilerplate + generische Verben, die KEINE
-# Feature-Existenz anzeigen. Bewusst kein `filter|map|sort` als Positiv-Signal —
-# die kommen in jeder großen Datei vor (das war der False-Positive bei #8).
-STOPWORDS='fuer|fur|eine|einen|oder|mit|und|der|die|das|den|dem|als|dann|wenn|gegeben|wird|werden|soll|sich|nicht|kein|keine|story|acceptance|criteria|tasks|epic|glossar|kandidaten|layer|none|depends|nutzer|moechte|damit|sehen|ohne|sind|sein|aktiv|neue|neuen|erstellen|erstelle|erstellt|anlegen|implementieren|implementiert|schreiben|einbinden|einbauen|this|that|with|from|into|über|ueber|dass|wird|dann|jedes|jeder|alle|allen|einer|eines'
 
 # ═══════════════════════════════════════════════════════════════════════════
 # ARGUMENTE
@@ -78,6 +69,29 @@ while [ $# -gt 0 ]; do
     *)            ISSUE="$1"; shift ;;
   esac
 done
+
+# ═══════════════════════════════════════════════════════════════════════════
+# BUDGET-QUELLE (Priorität: --budget CLI > $PREFLIGHT_BUDGET Env >
+#   preflight_budget: aus CLAUDE.md > kein Gate). Kein API-Key nötig, portabel.
+#   Wert "none" (oder leer) bedeutet explizit: kein Budget-Gate.
+# ═══════════════════════════════════════════════════════════════════════════
+BUDGET_SOURCE=""
+if [ -n "$BUDGET" ]; then
+  BUDGET_SOURCE="CLI"
+elif [ -n "${PREFLIGHT_BUDGET:-}" ]; then
+  BUDGET="$PREFLIGHT_BUDGET"; BUDGET_SOURCE="Env"
+elif [ -n "$SOURCE_DIR" ] && [ -f "$SOURCE_DIR/CLAUDE.md" ]; then
+  # Analog zum Cycle-Risk-Read: nur wenn --source-dir eine CLAUDE.md enthält.
+  # POSIX-Zeichenklassen statt \s (BSD/macOS-sed kennt \s nicht); der Wert ist ein
+  # einzelnes Token → abschließendes `tr -d` entfernt jeglichen Rest-Whitespace.
+  CFG_BUDGET=$(grep -E '^[[:space:]]*preflight_budget:' "$SOURCE_DIR/CLAUDE.md" 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*preflight_budget:[[:space:]]*//; s/[[:space:]]*#.*$//' \
+    | tr -d '[:space:]' || true)
+  if [ -n "$CFG_BUDGET" ]; then BUDGET="$CFG_BUDGET"; BUDGET_SOURCE="CLAUDE.md"; fi
+fi
+# "none" (aus Config) normalisieren → kein Gate.
+if [ "$BUDGET" = "none" ]; then BUDGET=""; BUDGET_SOURCE=""; fi
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 1 — EINGABE BESCHAFFEN — zwei Modi:
@@ -158,25 +172,14 @@ fi
 # ═══════════════════════════════════════════════════════════════════════════
 # 5 — LÖSUNG A: CODEBASE-SCAN (existiert die Funktionalität schon?)
 # ═══════════════════════════════════════════════════════════════════════════
-EXISTENCE_HIT=""; EXISTENCE_FILE=""; EXISTENCE_N=0
+EXISTENCE_HIT=""; EXISTENCE_FILE=""
 if [ -n "$SOURCE_DIR" ] && [ -d "$SOURCE_DIR" ]; then
-  # Feature-spezifische Kandidaten-Terme aus TITEL + Story + Tasks ziehen.
-  # Wichtig: NICHT generische Verben — die echten Domänen-Identifier. Wenn eine
-  # Story vorhandene Funktionalität nachbaut, benennt sie die Dinge fast immer
-  # genauso wie der Bestandscode (z.B. validationStatus, vorname, email).
-  ALL_TOKENS=$( { echo "$TITLE"; section "Story"; section "Tasks"; } \
-    | grep -oE "[a-zA-Z_][a-zA-Z0-9_]{$((TERM_MIN_LEN-1)),}" 2>/dev/null \
-    | tr 'A-Z' 'a-z' \
-    | sort -u \
-    | grep -viwE "^($STOPWORDS)$" || true)
-
-  # Kandidaten-Quelldateien (ohne Vendor/Tests/Build)
-  CANDIDATES=$(grep -rlE "." "$SOURCE_DIR" 2>/dev/null \
-    | grep -vE "$SCAN_EXCLUDES" || true)
-
   # STARKES Signal: echte Code-Identifier (camelCase / snake_case) aus den Tasks,
   # die wörtlich im Bestandscode stehen. Das ist präzise — solche Bezeichner sind
   # fast nie Prosa. Findet der Estimator sie, existiert die Funktionalität sicher.
+  # Dies ist das EINZIGE Existenz-Signal: verlässlich oder gar nicht. Das früher
+  # zusätzlich berechnete schwache Term-Überlappungs-Signal wurde entfernt, weil
+  # es zu verrauscht war (generische Terme markierten faktisch nur Dateigröße).
   IDENTIFIERS=$( { section "Story"; section "Tasks"; echo "$TITLE"; } \
     | grep -oE '[a-zA-Z][a-zA-Z0-9_]{5,}' 2>/dev/null \
     | grep -E '[a-z][A-Z]|_' \
@@ -193,24 +196,9 @@ if [ -n "$SOURCE_DIR" ] && [ -d "$SOURCE_DIR" ]; then
       EXISTENCE_HIT="stark"; EXISTENCE_FILE="$HIT"; STRONG_ID="$idf"; break
     fi
   done <<< "$IDENTIFIERS"
-
-  # SCHWACHES Signal: generische Feature-Term-Überlappung pro Datei (nur Hinweis).
-  BEST=0; BESTFILE=""
-  while IFS= read -r f; do
-    [ -f "$f" ] || continue
-    n=0
-    while IFS= read -r tok; do
-      [ -z "$tok" ] && continue
-      if grep -qiF "$tok" "$f" 2>/dev/null; then n=$((n+1)); fi
-    done <<< "$ALL_TOKENS"
-    if [ "$n" -gt "$BEST" ]; then BEST="$n"; BESTFILE="$f"; fi
-  done <<< "$CANDIDATES"
-  EXISTENCE_N="$BEST"
-  [ -z "$EXISTENCE_FILE" ] && EXISTENCE_FILE="$BESTFILE"
 fi
 
 # Adjustment: NUR bei starkem Signal Tier herabstufen (verlässlich).
-# Schwaches Signal steuert keinen Downgrade — es ist ein Prüf-Hinweis an den ARCHITECT.
 DOWNGRADED=""
 if [ "$EXISTENCE_HIT" = "stark" ]; then
   case "$TIER" in
@@ -239,6 +227,11 @@ fi
 # 7 — BUDGET-GATE
 # ═══════════════════════════════════════════════════════════════════════════
 VERDICT="GO"; EXIT=0
+# Nur ganzzahlige Budgets gaten; ungültige Werte ignorieren (kein Gate, kein Crash).
+if [ -n "$BUDGET" ] && ! printf '%s' "$BUDGET" | grep -qE '^[0-9]+$'; then
+  echo "WARNUNG: Budget-Wert '$BUDGET' (aus $BUDGET_SOURCE) ist keine Ganzzahl — Budget-Gate deaktiviert." >&2
+  BUDGET=""; BUDGET_SOURCE=""
+fi
 if [ -n "$BUDGET" ]; then
   if [ "$TOKENS" -gt "$BUDGET" ]; then VERDICT="NO-GO"; EXIT=20; fi
 fi
@@ -270,16 +263,11 @@ if [ "$EXISTENCE_HIT" = "stark" ]; then
     "$STRONG_ID" "${EXISTENCE_FILE#$SOURCE_DIR/}"
   echo "  → Refactor/Extract statt Neubau. Modell herabgestuft."
 elif [ -n "$SOURCE_DIR" ]; then
-  echo "  Codebase-Scan: kein eindeutiger Existenz-Identifier gefunden."
-  if [ "$EXISTENCE_N" -ge "$EXISTENCE_THRESHOLD" ]; then
-    printf "  HINWEIS an ARCHITECT — prüfe manuell (%s Term-Überlappung): %s\n" \
-      "$EXISTENCE_N" "${EXISTENCE_FILE#$SOURCE_DIR/}"
-    echo "  (schwaches Signal — kein Downgrade, aber vor Neubau kurz reinschauen)"
-  fi
+  echo "  Codebase-Scan: keine bestehende Implementierung erkannt"
 fi
 bar
 printf "  VERDIKT     %s\n" "$VERDICT"
-[ -n "$BUDGET" ] && printf "  Budget      %s Tokens verfügbar\n" "$BUDGET"
+[ -n "$BUDGET" ] && printf "  Budget      %s Tokens verfügbar (aus %s)\n" "$BUDGET" "$BUDGET_SOURCE"
 bar
 
 # ═══════════════════════════════════════════════════════════════════════════
