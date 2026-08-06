@@ -18,7 +18,7 @@ Die Rolle steht in deinem Startauftrag. Führe niemals Arbeit einer anderen Roll
   `gh pr merge` · `gh pr review --approve` · Force-Push · History-Rewrite ·
   Tests löschen, skippen oder abschwächen ·
   Änderungen an `.github/`, `.claude/`, `CLAUDE.md`, `docs/PROTOCOL.md`, CI-Konfiguration,
-  Framework-Skripten (`scripts/glossar_gate.sh`, `scripts/preflight.sh`) ·
+  Framework-Skripten (`scripts/glossar_gate.sh`, `scripts/preflight.sh`, `scripts/preflight-calibrate.sh`) ·
   Label `human-override:protected-paths` setzen ·
   Label `human-override:test-contract` setzen ·
   Label `human-override:api-breaking` setzen.
