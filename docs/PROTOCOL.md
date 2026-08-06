@@ -201,6 +201,9 @@ adr: no
 
 - `depends-on` (user-story.md):
   `^depends-on: (none|#[0-9]+(, #[0-9]+)*)$`
+- `preflight-modell` (user-story.md, vom ARCHITECT eingetragen — Preflight-Empfehlung;
+  vom `/pipeline`-Orchestrator und von Menschen für das Modell-Routing geparst):
+  `^preflight-modell: (Haiku|Sonnet|Opus)$`
 - `closes`-Referenz (PR-Body, case-insensitive, von `invalidate-verdict` geparst):
   `closes #<nr>`
 - Glossar-Kandidat (user-story.md, eine Zeile pro Begriff):

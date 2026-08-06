@@ -355,6 +355,23 @@ Läuft durch bis die Queue leer ist oder `needs-human` stoppt.
 → /pipeline
 ```
 
+### Modell-Routing
+
+Zwei Betriebsarten, bewusst getrennt:
+
+- **`/pipeline` (Claude-Code-Orchestrator)** — wählt pro Queue-Item automatisch das Modell
+  aus der Preflight-Empfehlung (`preflight-modell:` in der Story bzw. Preflight-Nachlauf)
+  und spawnt jede Rolle als eigenen Sub-Agenten im passenden Tier (Haiku/Sonnet/Opus).
+  Die Rollen laufen mit **Hybrid-Isolation**: zwischen Rollen ist der Kontext inhärent
+  getrennt (jeder Spawn startet kalt, liest den Zustand nur aus GitHub), sodass REVIEWER und
+  CSO nie DEVELOPER-Kontext sehen; innerhalb der DEVELOPER-Phase teilen Implementierung und
+  Sub-Delegation den Kontext (der `test-author` bleibt auf die Story-Nummer isoliert).
+  Ist ein empfohlenes Modell nicht verfügbar, fällt der Orchestrator auf das nächstniedrigere
+  Tier zurück.
+- **Manuelle Sessions (getrennte Sessions)** — der generische, anbieterunabhängige Standard.
+  Jede Rolle in einer eigenen Session, Modellwahl durch den Menschen. Funktioniert mit jedem
+  LLM mit Terminal-Zugang. Der Orchestrator ist ein Komfort-Layer obendrauf, kein Ersatz.
+
 ### Eskalationen lösen (needs-human)
 
 Wenn ein Agent stoppt und `needs-human` setzt:
