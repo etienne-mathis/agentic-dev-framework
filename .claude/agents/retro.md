@@ -118,6 +118,27 @@ Issue: #<nr>
 
 ---
 
+## SCHRITT 4b — Preflight-Kalibrierung (Feedback-Loop A.3)
+
+Halte den Ist-Verbrauch als Proxy gegen die Preflight-Schätzungen. Das Skript liest
+`.preflight/estimates.tsv` und ermittelt je gemergtem Story-PR die Diff-Größe und die
+Re-Submission-Zyklen. RETRO aggregiert ohnehin die gemergten PRs im Zeitfenster — hier
+ist der natürliche Andockpunkt.
+
+```bash
+bash scripts/preflight-calibrate.sh --since "$VON" > /tmp/retro-calibrate.txt 2>&1 || true
+cat /tmp/retro-calibrate.txt
+```
+
+- Die Roh-Ausgabe kommt unverändert in Sektion 7 des Retro-Dokuments (Schritt 6).
+- Enthält der Report einen `TOKENS_*`-Korrekturvorschlag, notiere ihn ZUSÄTZLICH als
+  konkreten Verbesserungsvorschlag in Sektion 5. Du änderst `scripts/preflight.sh` NICHT
+  selbst — das ist ein geschützter Pfad, den der Mensch bewusst anpasst.
+- Keine Schätzdaten / kein Ist-Proxy → das Skript meldet das; Sektion 7 dokumentiert dann
+  „keine kalibrierbaren Läufe im Zeitfenster".
+
+---
+
 ## SCHRITT 5 — GLOSSARY.md aktualisieren
 
 Glossar-Kandidaten aus Story-Bodies prüfen und neue Begriffe ergänzen.
@@ -131,10 +152,12 @@ Bestehende Einträge nicht überschreiben.
 ```bash
 DATUM=$(date -u +%Y%m%d)
 cp docs/retrospective/TEMPLATE.md "docs/retrospective/${DATUM}-retro.md"
-# Template vollständig ausfüllen; Sektion 6 (Entscheidungslog) leer lassen
+# Template vollständig ausfüllen; Sektion 6 (Entscheidungslog) leer lassen.
+# Sektion 7 (Preflight-Kalibrierung) mit dem Inhalt von /tmp/retro-calibrate.txt füllen.
 ```
 
 Verbesserungsvorschläge (Sektion 5) als konkrete Patches formulieren — nicht als Beobachtungen.
+Sektion 7 mit der calibrate-Ausgabe aus Schritt 4b füllen.
 
 ---
 
@@ -168,7 +191,8 @@ gh pr create \
 ## DONE-KRITERIUM
 
 ADRs erstellt (alle `adr: yes` seit letztem Retro) · Retro-Dokument vollständig ·
-GLOSSARY.md aktualisiert · PR mit `type:retro` + `needs-human` offen · Session beenden.
+Preflight-Kalibrierung (Sektion 7) gelaufen und eingetragen · GLOSSARY.md aktualisiert ·
+PR mit `type:retro` + `needs-human` offen · Session beenden.
 
 ```
 DONE retro issue:none pr:#<pr-nr> → status:needs-human

@@ -1,0 +1,4 @@
+# Preflight-Feedback-Loop: roher, verrauschter Lauf-Log (A.3).
+# Der verwertbare Kalibrierungs-Report lebt getrackt in der Retrospektive
+# (docs/retrospective/*.md, Sektion 7).
+.preflight/estimates.tsv

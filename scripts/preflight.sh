@@ -289,4 +289,17 @@ status: nicht gestartet — in nächster Session mit ausreichend Budget aufnehme
 EOF
 fi
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 10 — FEEDBACK-LOOP (A.3): Schätzung protokollieren — NUR im Issue-Modus.
+# Ein echter Issue lässt sich später gegen den gemergten Story-PR kalibrieren
+# (preflight-calibrate.sh). Im Draft-Modus (ISSUE=ENTWURF) wird nichts geloggt,
+# weil es dort keinen späteren Ist-Proxy gibt.
+# Format (Tab-getrennt): issue \t tier \t tokens_est \t time_est \t datum
+# ═══════════════════════════════════════════════════════════════════════════
+if [ -z "$BODYFILE" ] && printf '%s' "$ISSUE" | grep -qE '^[0-9]+$'; then
+  mkdir -p .preflight
+  printf '%s\t%s\t%s\t%s\t%s\n' \
+    "$ISSUE" "$TIER" "$TOKENS" "$TIME" "$(date -u +%F)" >> .preflight/estimates.tsv
+fi
+
 exit "$EXIT"

@@ -68,3 +68,14 @@
 | Vorschlag | Entscheidung | Begründung |
 |---|---|---|
 | | umgesetzt / abgelehnt / verschoben | |
+
+## 7 — Preflight-Kalibrierung
+
+<!-- Roh-Ausgabe von scripts/preflight-calibrate.sh (Ist-Proxy vs. Schätzung je Tier).
+     Enthält der Report einen TOKENS_*-Korrekturvorschlag, wandert er zusätzlich als
+     Verbesserungsvorschlag in Sektion 5. Übernahme in scripts/preflight.sh macht der
+     Mensch bewusst (geschützter Pfad). -->
+
+```
+<!-- calibrate-Report hier einfügen -->
+```
