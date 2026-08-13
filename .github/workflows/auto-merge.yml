@@ -20,6 +20,7 @@ permissions:
   pull-requests: write
   checks: read
   statuses: read
+  actions: read        # nötig: statusCheckRollup liest checkSuite.workflowRun
 
 jobs:
   auto-merge:
@@ -59,10 +60,11 @@ jobs:
             STATE=$(gh pr view "$PR" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
             if [ "$STATE" != "OPEN" ]; then echo "PR #$PR nicht offen ($STATE) — skip."; continue; fi
 
-            LABELS=$(gh pr view "$PR" --json labels --jq '.labels[].name')
+            LABELS=$(gh pr view "$PR" --json labels --jq '.labels[].name' || true)
 
             # Required-Checks-Rollup → success | failure | pending
             # (der auto-merge-Check selbst wird ausgeklammert, sonst Self-Deadlock).
+            # Fehlerresilient: schlägt der API-Call fehl, gilt "pending" (kein Merge).
             CHECKS=$(gh pr view "$PR" --json statusCheckRollup --jq '
               [ .statusCheckRollup[]
                 | select( ((.name // .context // "") | ascii_downcase | contains("auto-merge")) | not )
@@ -71,7 +73,7 @@ jobs:
                 elif ($c | map(select(. == "FAILURE" or . == "CANCELLED" or . == "TIMED_OUT"
                        or . == "ACTION_REQUIRED" or . == "ERROR" or . == "STARTUP_FAILURE")) | length) > 0 then "failure"
                 elif ($c | map(select(. == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED")) | length) == ($c | length) then "success"
-                else "pending" end')
+                else "pending" end' 2>/dev/null || echo "pending")
             echo "checks=$CHECKS"
 
             # 3 — Gate entscheiden (getestete Logik)
