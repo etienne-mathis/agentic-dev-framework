@@ -64,7 +64,8 @@ git worktree add --detach "../$(basename "$PWD")-review-<nr>" "origin/story/<nr>
     "$(git branch -r | grep "origin/story/<nr>-" | head -1 | xargs)"
 ```
 
-Außerdem: `CLAUDE.md` (Layer-Mapping, Observability-Config, limits), `docs/GLOSSARY.md`.
+Außerdem: `CLAUDE.md` (Layer-Mapping, Observability-Config, limits), `docs/GLOSSARY.md`,
+`docs/conventions.adoc` (Prüfmaßstab für Prüfpunkt 7), `docs/architecture.adoc` (Layer/ADRs).
 
 ---
 
@@ -150,6 +151,23 @@ Lasttests: nur bei Label `perf-kritisch` am Task (opt-in, nicht Pflicht).
 
 Finding-Kategorie: `[high][performance]` (N+1, sync-in-async) oder `[medium][performance]`
 
+### Prüfpunkt 7 — conventions.adoc-Konformität (Anti-Generik)
+
+Prüfe den Diff gegen `docs/conventions.adoc` — Baseline-Regeln UND den projektspezifischen
+Abschnitt 5. Ziel: professioneller, projekt-idiomatischer Code statt generischem KI-Default.
+
+- Kommentar-Rauschen (paraphrasiert den Code statt WARUM), tote Reste (auskommentierter Code,
+  ungenutzte Variablen/Importe, `TODO`/`FIXME` ohne Ticket, Debug-Ausgaben)?
+- Generische statt fachlicher Namen (`getData`/`handler`/`process`)?
+- Leere/verschluckende try/catch, spekulative Generik, Copy-Paste-Duplikate?
+- Verstoß gegen die projektspezifischen Vorgaben (verbotene Libs, gesetzte Muster/Namens-/
+  Fehlerkonventionen aus Abschnitt 5)?
+
+Ein Verstoß ist ein Finding, kein Stilgeschmack. Tote Reste / verschluckte Fehler /
+verbotene Libs sind mindestens `medium`.
+
+Finding-Kategorie: `[low][sonstiges]` bis `[medium][sonstiges]` (bzw. spezifischer, z. B. `[medium][dependency]`)
+
 ---
 
 ## FINDINGS-FORMAT
@@ -202,5 +220,5 @@ git worktree remove "../$(basename "$PWD")-review-<nr>"
 
 ## DONE-KRITERIUM
 
-CI-Gates-Status verifiziert · alle 6 Prüfpunkte dokumentiert · Verdikt + Label + HANDOFF ·
+CI-Gates-Status verifiziert · alle 7 Prüfpunkte dokumentiert · Verdikt + Label + HANDOFF ·
 Review-Worktree entfernt · Session beenden.
