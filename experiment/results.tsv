@@ -1,0 +1,14 @@
+# Head-to-Head-Ergebnisse (P3.4). Tab-getrennt. '#'-Zeilen werden ignoriert.
+# Eine Zeile je (Task × Arm). Arm A = volle Pipeline, Arm B = Single-AI.
+# Tokens für Arm A: Summe aller Rollen-Spawns des Tasks aus .preflight/actuals.tsv
+# (measure-run.sh). Für Arm B: measure-run.sh über das eine Session-Fenster.
+#
+# Spalten:
+# task_id  arm  komplexitaet  in_tokens  out_tokens  cache_read  wall_clock_s  zyklen  menschl_eingriffe  findings  escaped_defects  ci_gruen  coverage_pct  konvention_ok  notiz
+#
+# komplexitaet ∈ trivial | mittel | komplex   ·   arm ∈ A | B
+# ci_gruen ∈ ja | nein   ·   konvention_ok ∈ ja | nein (Prüfpunkt-7-Konformität)
+# findings = vom REVIEWER gefundene Findings (nur Arm A sinnvoll; Arm B = 0)
+# escaped_defects = Contract-/Gate-Fehler NACH "fertig" (der eigentliche Qualitätsmesswert)
+#
+# --- Daten ab hier (aktuell leer: Doppel-Lauf noch nicht durchgeführt) ---
