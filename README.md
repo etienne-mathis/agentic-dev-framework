@@ -658,7 +658,10 @@ Vollständige Protokoll-Spezifikation: `docs/PROTOCOL.md`
 │       ├── guard-protected-paths.yml # Automatisch aktiv
 │       └── guard-test-contract.yml   # Automatisch aktiv
 ├── scripts/
-│   └── glossar_gate.sh               # CI-Job: Synonym-Check gegen GLOSSARY.md
+│   ├── glossar_gate.sh               # CI-Job: Synonym-Check gegen GLOSSARY.md
+│   ├── preflight.sh                  # ARCHITECT: Existenz-Check + Modell/Budget-Schätzung
+│   ├── preflight-dedup.sh            # ARCHITECT: Issue-Dedup-Hinweis (offen+geschlossen)
+│   └── preflight-calibrate.sh        # RETRO: Token-Schätzung gegen Ist-Proxys kalibrieren
 └── setup/
     ├── labels.sh                     # Einmalig ausführen: alle 23 Labels anlegen
     └── rollout-checklist.md          # Detaillierte Setup-Checkliste

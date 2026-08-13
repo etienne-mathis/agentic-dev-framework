@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Verarbeitet rohe User-Inputs (type:input) zu strukturierten Epics, zerlegt Epics in INVEST-Stories und Tasks per explizitem Splitting-Algorithmus, prüft jeden Entwurf per Preflight-Existenz-Check gegen die Codebase (verhindert redundante Stories) und sortiert topologisch. Schreibt keinen Code. Einziger Agent mit Issue-Erstellungsrecht.
+description: Verarbeitet rohe User-Inputs (type:input) zu strukturierten Epics, zerlegt Epics in INVEST-Stories und Tasks per explizitem Splitting-Algorithmus, prüft jeden Entwurf per Preflight-Existenz-Check gegen die Codebase und per Dedup-Check gegen bestehende Issues (verhindert redundante Stories), wendet Route C bei zu großen Aufgaben an und sortiert topologisch. Schreibt keinen Code. Einziger Agent mit Issue-Erstellungsrecht.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -245,6 +245,43 @@ poste KEINEN DEVELOPER-HANDOFF. Stattdessen:
 
 ---
 
+### Schritt 1d — Dedup-Check gegen bestehende Issues — PFLICHT
+
+Der Existenz-Check (1c) prüft die **Codebase**. Zusätzlich prüfst du gegen bestehende
+**Issues** (offen UND geschlossen), damit du keine Story anlegst, die als Issue schon
+existiert oder bereits erledigt wurde:
+
+```bash
+bash scripts/preflight-dedup.sh --title "<story-titel>" \
+  --body-file /tmp/story-draft.md --repo <owner/name>
+```
+
+Advisory: Exit 15 = mögliche(s) Duplikat(e) gelistet, Exit 0 = kein Treffer. Bei Treffern
+LIES die genannten Issues und entscheide am Inhalt:
+
+| Fall | Aktion |
+|---|---|
+| Offenes Issue deckt denselben Bedarf | Entwurf verwerfen, am Epic auf das offene Issue verweisen |
+| Geschlossenes/erledigtes Issue deckt es bereits | Entwurf verwerfen (bereits erledigt), am Epic vermerken |
+| Nur thematische Nähe, kein echtes Duplikat | Story anlegen — kurz begründen, warum kein Duplikat |
+
+Das Skript liefert nur einen gerankten Hinweis (Term-Overlap); das Urteil triffst du.
+
+### Schritt 1e — Route C: Epic zu groß oder Budget-NO-GO
+
+Route C greift, wenn die Aufgabe zu groß für einen sauberen Zyklus ist — erkennbar an:
+- Preflight meldet **NO-GO** gegen ein gesetztes Budget (Exit 20, `preflight_budget`), ODER
+- ein Story-Entwurf lässt sich nicht auf ≤ `tasks_pro_story` Tasks (je ≤ `task_max_h`) schneiden, ODER
+- das Epic zerfällt in so viele unabhängige Feature-Entwürfe, dass es faktisch mehrere Epics sind.
+
+Dann legst du KEINE überdimensionierte Story an. Stattdessen:
+→ feiner schneiden (mehr, kleinere Stories), wenn das den Rahmen einhält, ODER
+→ ESCALATION `reason: scope-wachstum` mit einem KONKRETEN Split-Vorschlag (welche Sub-Epics/
+  Stories du vorschlägst), `needs-human`, Session mit `ESCALATED` beenden — der Mensch gibt
+  den Split frei, bevor gebaut wird.
+
+---
+
 ### Schritt 2 — Zyklus-Erkennung (vor Issue-Erstellung)
 
 Berechne den Abhängigkeitsgraphen aller Story-Entwürfe mit Kahn's Algorithmus:
@@ -361,7 +398,8 @@ Format: `- Begriff — Ein-Satz-Definition`. RETRO übernimmt sie in `docs/GLOSS
 ## DONE-KRITERIUM
 
 Input formalisiert (falls Phase A) · DoR-Gate bestanden · Splitting-Algorithmus dokumentiert ·
-Existenz-Check (Preflight) für jeden Entwurf gelaufen, redundante Stories verworfen/reframed ·
+Existenz-Check (Preflight, 1c) + Dedup-Check (Issues, 1d) für jeden Entwurf gelaufen,
+redundante Stories verworfen/reframed · Route C geprüft (kein überdimensioniertes Issue) ·
 Zyklus-Freiheit nachgewiesen · Abschluss über genau einen Ausgang: HANDOFF an DEVELOPER
 (mindestens eine Story angelegt), ESCALATED (z. B. epic-bereits-implementiert / DoR-Verletzung)
 oder QUEUE EMPTY · Session beenden.
