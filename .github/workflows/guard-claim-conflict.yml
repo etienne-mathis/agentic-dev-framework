@@ -1,0 +1,50 @@
+name: claim-conflict
+
+# Label-Race-Detektion (P3.3, Problem 6). Reagiert auf neue CLAIM-Kommentare und
+# erkennt zwei konkurrierende CLAIMs auf demselben Objekt in einem kurzen Fenster
+# OHNE dazwischenliegenden HANDOFF → setzt needs-human + Kommentar.
+# Detektion statt Verhinderung (ein echter verteilter Lock würde Zero-Infra brechen).
+#
+# Reine Detektionslogik: scripts/ci/detect-claim-conflict.sh (Selbsttest-Harness).
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  claim-conflict:
+    # Nur laufen, wenn der neue Kommentar selbst ein CLAIM ist (spart API-Calls,
+    # verhindert Endlos-Retrigger durch den eigenen Konflikt-Kommentar).
+    if: startsWith(github.event.comment.body, 'CLAIM ')
+    runs-on: ubuntu-latest
+    steps:
+      # Config/Skripte von der Basis lesen (nie vom PR-Head).
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Detect competing claims
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NR: ${{ github.event.issue.number }}
+        run: |
+          set -uo pipefail
+
+          # Alle Kommentare des Objekts (Issue ODER PR — beide sind Issues in der API).
+          TSV=$(gh api "repos/${{ github.repository }}/issues/${NR}/comments" --paginate \
+            --jq '.[] | [.created_at, .user.login, ((.body // "") | split("\n")[0])] | @tsv')
+
+          RC=0
+          OUT=$(printf '%s\n' "$TSV" | bash scripts/ci/detect-claim-conflict.sh --window 180) || RC=$?
+          echo "$OUT"
+
+          if [ "$RC" -eq 10 ]; then
+            gh issue edit "$NR" --add-label "needs-human" || true
+            gh issue comment "$NR" --body "$(printf 'AUTO: claim-conflict-guard\n\n%s\n\nParallel-Verarbeitung desselben Objekts erkannt. Invariante Single-Writer-Orchestrator verletzt (docs/PROTOCOL.md §1). `needs-human` gesetzt — der Mensch entscheidet, welcher CLAIM gewinnt; der andere Agent bricht ab.' "$OUT")" || true
+            echo "::warning::Label-Race auf #${NR} erkannt — needs-human gesetzt."
+          fi

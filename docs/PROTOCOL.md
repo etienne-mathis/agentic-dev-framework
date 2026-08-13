@@ -53,6 +53,25 @@ zurück — der Zielzustand ist durch den Gewinner bereits korrekt.
 
 ---
 
+## 1a — Invariante: Single-Writer-Orchestrator
+
+GitHub-Labels sind **kein atomarer Lock**. Der Claim-Verify-Mechanismus (§1) ist eine
+Mitigation, kein echter Schutz bei paralleler Verarbeitung. Darum gilt als harte Invariante:
+
+- **Genau eine `/pipeline`-Instanz** verarbeitet zu einem Zeitpunkt genau ein Objekt.
+  Der Orchestrator ist der einzige Schreiber der Pipeline-Zustandsmaschine.
+- **Manuelle Parallel-Sessions** (bewusst nebenläufig gestartete Rollen) claimen stets
+  **verschiedene Objekte** — nie dasselbe Objekt gleichzeitig. Legitim ist die
+  sequenzielle Übergabe (z. B. reviewer → cso am selben PR), erkennbar an einem
+  dazwischenliegenden `### HANDOFF`.
+- **Ein Race ist eine Invarianten-Verletzung, kein Normalfall.** Zwei CLAIMs auf demselben
+  Objekt in kurzem Fenster OHNE dazwischenliegenden HANDOFF werden vom Workflow
+  `guard-claim-conflict.yml` erkannt; dieser setzt `needs-human` und kommentiert. Detektion
+  statt Verhinderung — ausreichend für den Single-Operator-Betrieb. Der Mensch entscheidet,
+  welcher CLAIM gewinnt; der andere Agent bricht nach der Verify-Regel (§1) ab.
+
+---
+
 ## 2 — HANDOFF
 
 ```

@@ -81,7 +81,9 @@ Stack-Pfade) und dass die drei historischen E2E-Bugs nicht regrediert sind.
 ### CI einrichten
 
 Die Guard-Workflows (`invalidate-verdict.yml`, `guard-protected-paths.yml`, `guard-test-contract.yml`,
-`framework-selftest.yml`) sind bereits aktiv — kein Anpassen nötig, laufen auf jedem PR.
+`framework-selftest.yml`, `guard-claim-conflict.yml`) sind bereits aktiv — kein Anpassen nötig.
+`guard-claim-conflict.yml` reagiert auf CLAIM-Kommentare (Label-Race-Detektion → `needs-human`).
+`auto-merge.yml` ist nur im opt-in-Modus `autonomy: autonomous` wirksam (siehe Branch Protection).
 Die Guard-/CI-Kernlogik liegt zentral in `scripts/ci/*.sh` (single source of truth); die
 Workflows rufen sie nur auf und werden vom Selbsttest-Harness mitgetestet.
 
