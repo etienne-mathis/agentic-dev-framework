@@ -215,13 +215,58 @@ done
 Nach jedem Subagent-Aufruf: zurück zu Schritt 1.
 Abbruchbedingung: alle 7 Queues leer.
 
+### Loop-Härtung — Autonomie-Modus (behebt Problem 1 + 3)
+
+Lies den Modus einmalig: `AUTONOMY=$(bash scripts/ci/read-autonomy.sh CLAUDE.md)`.
+
+- **`supervised` (Default):** Ein CSO-`approved` beendet die Kette dieses Items nicht abrupt —
+  du verarbeitest weiter, was in der Queue steht. `status:approved`-PRs bleiben liegen und der
+  **Mensch mergt** sie. `depends-on`-Stories lösen sich erst nach dem menschlichen Merge auf.
+- **`autonomous`:** Nach CSO-`approved` mergt `auto-merge.yml` den PR automatisch (squash),
+  sobald alle Required Checks grün sind und kein `needs-human`/`human-override:*`/`merge-hold`
+  gesetzt ist. Stoppe die Pipeline dann NICHT sofort: Erreichst du einen Zustand, in dem nur
+  noch `status:approved`-PRs offen sind, **warte kurz aktiv auf den Auto-Merge** und löse
+  danach `depends-on` auf (die Story-Issues schließen sich via `closes #` beim Merge):
+
+  ```bash
+  if [ "$AUTONOMY" = "autonomous" ]; then
+    for _ in 1 2 3 4 5 6; do
+      OPEN_APPROVED=$(gh pr list --label "status:approved" --json number --jq 'length')
+      [ "$OPEN_APPROVED" -eq 0 ] && break
+      sleep 20   # dem Auto-Merge-Workflow Zeit geben
+    done
+    # danach zurück zu Schritt 1 → die depends-on-Auflösung sieht die geschlossenen Issues
+  fi
+  ```
+
+  Bleibt ein `status:approved`-PR nach dem Warten offen (Auto-Merge scheiterte, z. B. an
+  Branch-Protection), behandle ihn wie einen wartenden Merge (Abschlussbericht) und fahre fort.
+
+**Fast-Lane (`track:fast`, behebt Problem 2):** Items mit diesem Label laufen durchgängig auf
+Haiku (deckt sich mit `preflight-modell: Haiku`); der DEVELOPER nutzt für Einzeldatei-Diffs
+keinen separaten Worktree, der REVIEWER die reduzierte Prüftiefe (siehe reviewer.md). Rollen
+und Isolation bleiben unverändert — nur die Tiefe skaliert mit dem Risiko.
+
 ---
 
 ## Schritt 4 — Abschlussbericht
 
 ```bash
 echo "=== PIPELINE ABSCHLUSSBERICHT ==="
-echo "Offene status:approved PRs (warten auf menschlichen Merge):"
+AUTONOMY=$(bash scripts/ci/read-autonomy.sh CLAUDE.md)
+echo "Autonomie-Modus: $AUTONOMY"
+
+echo ""
+echo "Zuletzt auto-gemergte PRs (autonomous):"
+if [ "$AUTONOMY" = "autonomous" ]; then
+  gh pr list --state merged --limit 10 --json number,title,mergedAt \
+    --jq 'sort_by(.mergedAt) | reverse | .[] | "  PR #\(.number) \(.title)"'
+else
+  echo "  (supervised — Merges erfolgen durch den Menschen)"
+fi
+
+echo ""
+echo "Offene status:approved PRs (warten auf $([ "$AUTONOMY" = autonomous ] && echo "Auto-Merge/Branch-Protection" || echo "menschlichen Merge")):"
 gh pr list --label "status:approved" --json number,title \
   --jq '.[] | "  PR #\(.number) \(.title)"'
 

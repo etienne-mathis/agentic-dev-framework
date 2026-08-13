@@ -41,6 +41,13 @@ projekt: <projektname>
 mensch: @<github-handle>
 default_branch: main
 stack: python-fastapi          # python-fastapi | n8n | node
+autonomy: supervised           # supervised (Default) | autonomous
+                               # supervised: der Mensch mergt jeden PR (USP: Kontrolle).
+                               # autonomous: auto-merge.yml mergt einen PR automatisch,
+                               #   sobald status:approved + alle Required Checks grün +
+                               #   KEIN needs-human / human-override:* / merge-hold.
+                               # Voraussetzung für autonomous: Branch-Protection ohne
+                               #   erzwungenen menschlichen Review (siehe rollout-checklist).
 
 befehle:
   test: uv run pytest

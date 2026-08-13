@@ -64,6 +64,26 @@ Gib die Fehlzusammenfassung wörtlich an die aufrufende Developer-Session zurüc
 
 ---
 
+## SELF-CHECK (VOR dem Commit — Pflicht)
+
+Der Contract landet in einer **unveränderlichen** Datei: ein späteres Reviewer-Finding
+(Prüfpunkt 7, conventions) daran ist nur noch per `human-override:test-contract` zu beheben —
+ein teurer, vermeidbarer Zyklus. Darum prüfst du deinen Contract selbst, bevor du committest:
+
+- **Keine ungenutzten Importe** — jeder Import wird im Test tatsächlich verwendet.
+- **Kein toter Code** — keine auskommentierten Reste, keine ungenutzten Hilfsvariablen/Fakes,
+  keine `TODO`/Platzhalter-Blöcke.
+- **Konventions-Konformität** — Namen nach GLOSSARY; Datei-/AC-Namensschema exakt;
+  keine Stil-Abweichung, die Prüfpunkt 7 als `critical`/`high` werten würde.
+- **Nur `tests/`** — kein einziger Produktivcode-Pfad im Commit.
+
+Führe, falls im Projekt vorhanden, den Linter aus `befehle.lint` (oder `befehle.gate`)
+auf `tests/acceptance/story_<nr>/` aus und behebe Findings, bevor du committest. Ist kein
+Linter konfiguriert, prüfe manuell nach obiger Liste. Erst wenn der Contract sauber ist,
+folgt der Commit.
+
+---
+
 ## COMMIT
 
 Genau ein lokaler Commit (kein Push):
@@ -106,4 +126,5 @@ Die Parent-Session eskaliert mit `reason: ac-nicht-umsetzbar`.
 ## DONE-KRITERIUM
 
 Je AC eine rote Testdatei · Rot-Beweis (keine Syntax-/Importfehler in den Tests selbst) ·
+Self-Check bestanden (keine ungenutzten Importe / kein toter Code / konventionskonform) ·
 ein Contract-Commit (nur `tests/`) · Rückgabe an Parent: AC→Testdatei-Mapping + Fehlzusammenfassung.

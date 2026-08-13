@@ -1,0 +1,91 @@
+name: auto-merge
+
+# Auto-Merge-Gate (P3.2, behebt Problem 1). Mergt einen Story-PR NUR, wenn das
+# Projekt bewusst autonom geschaltet ist (autonomy: autonomous in CLAUDE.md) und
+# alle Sicherheitsbedingungen erfüllt sind. Im Default (supervised) tut der
+# Workflow nichts → der Mensch mergt wie bisher. Das bewahrt den USP
+# (Kontrolle/Auditierbarkeit) und macht Autonomie zur Opt-in-Entscheidung.
+#
+# Die reine go/no-go-Logik liegt getestet in scripts/ci/auto-merge-gate.sh
+# (Selbsttest-Harness). Hier nur das Umfeld-Glue: Daten sammeln + mergen.
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: read
+
+jobs:
+  auto-merge:
+    name: auto-merge
+    runs-on: ubuntu-latest
+    steps:
+      # Config + Skripte IMMER von der Basis (default branch) lesen — nie vom
+      # PR-Head. So kann ein PR die Autonomie-Einstellung nicht manipulieren.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Evaluate gate and merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+
+          # 1 — betroffene PR-Nummern ermitteln (beide Event-Typen)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PRS="${{ github.event.pull_request.number }}"
+          else
+            PRS=$(jq -r '.check_suite.pull_requests[]?.number' "$GITHUB_EVENT_PATH" | sort -u)
+          fi
+          [ -z "$PRS" ] && { echo "Kein zugeordneter PR — nichts zu tun."; exit 0; }
+
+          # 2 — Autonomie-Modus aus der Basis-CLAUDE.md (früher Ausstieg spart API-Calls)
+          AUTONOMY=$(bash scripts/ci/read-autonomy.sh CLAUDE.md)
+          echo "autonomy=$AUTONOMY"
+          if [ "$AUTONOMY" != "autonomous" ]; then
+            echo "supervised (Default) — Auto-Merge deaktiviert, Mensch mergt."
+            exit 0
+          fi
+
+          for PR in $PRS; do
+            echo "──── PR #$PR ────"
+            STATE=$(gh pr view "$PR" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
+            if [ "$STATE" != "OPEN" ]; then echo "PR #$PR nicht offen ($STATE) — skip."; continue; fi
+
+            LABELS=$(gh pr view "$PR" --json labels --jq '.labels[].name')
+
+            # Required-Checks-Rollup → success | failure | pending
+            # (der auto-merge-Check selbst wird ausgeklammert, sonst Self-Deadlock).
+            CHECKS=$(gh pr view "$PR" --json statusCheckRollup --jq '
+              [ .statusCheckRollup[]
+                | select( ((.name // .context // "") | ascii_downcase | contains("auto-merge")) | not )
+                | (.conclusion // .state // "PENDING") | ascii_upcase ] as $c
+              | if ($c | length) == 0 then "pending"
+                elif ($c | map(select(. == "FAILURE" or . == "CANCELLED" or . == "TIMED_OUT"
+                       or . == "ACTION_REQUIRED" or . == "ERROR" or . == "STARTUP_FAILURE")) | length) > 0 then "failure"
+                elif ($c | map(select(. == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED")) | length) == ($c | length) then "success"
+                else "pending" end')
+            echo "checks=$CHECKS"
+
+            # 3 — Gate entscheiden (getestete Logik)
+            GATE=$(printf '%s\n' "$LABELS" \
+              | bash scripts/ci/auto-merge-gate.sh --autonomy "$AUTONOMY" --checks "$CHECKS")
+            GRC=$?
+            echo "$GATE"
+            if [ "$GRC" -ne 0 ]; then echo "Kein Merge für #$PR."; continue; fi
+
+            # 4 — mergen (squash). Scheitert es an Branch-Protection, Hinweis kommentieren.
+            if gh pr merge "$PR" --squash --delete-branch; then
+              echo "PR #$PR auto-gemergt (squash)."
+            else
+              echo "::warning::Auto-Merge für #$PR fehlgeschlagen (vermutlich Branch-Protection)."
+              gh pr comment "$PR" --body "auto-merge: Gate erfüllt, aber \`gh pr merge\` schlug fehl. Branch-Protection für den autonomen Modus prüfen (kein erzwungener menschlicher Review; Required Checks grün)." || true
+            fi
+          done

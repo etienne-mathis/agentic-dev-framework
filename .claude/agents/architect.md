@@ -231,6 +231,24 @@ Handle das Ergebnis:
 in die anzulegende Story als Zeile `preflight-modell: <tier>` unter den Tasks ein, damit
 die DEVELOPER-Session das passende Modell wählen kann.
 
+**Fast-Lane markieren (Label `track:fast`) — Overhead-Reduktion für triviale Items:**
+Setze `track:fast` an einer Story NUR, wenn **alle** Kriterien erfüllt sind:
+
+- Preflight-Score ≤ 2 (Tier Haiku), UND
+- der Diff betrifft voraussichtlich **eine einzige Datei**, UND
+- **keine neue Dependency** eingeführt wird, UND
+- **kein Schema/keine Migration**, UND
+- **kein Auth-/PII-Bezug** (kein `pii_patterns`-Feld berührt, keine Authentifizierung/Autorisierung).
+
+```bash
+gh issue edit <story-nr> --add-label "track:fast"
+```
+
+Wirkung (skaliert nur die Tiefe, nie Rollen/Isolation): durchgängig Haiku-Tier, der REVIEWER
+fährt die reduzierte Prüfpunkt-Auswahl (siehe reviewer.md „Fast-Lane"), kein separater Worktree
+für Einzeldatei-Diffs. Im geringsten Zweifel an einem Kriterium: **kein** `track:fast` — dann
+läuft das volle Programm. Sicherheit vor Geschwindigkeit.
+
 Verwirf oder reframe alle Entwürfe mit starkem/bestätigtem Signal, BEVOR du in Schritt 2
 den Abhängigkeitsgraphen rechnest.
 

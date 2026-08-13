@@ -101,6 +101,30 @@ Alle Gates grün → weiter mit inhaltlicher Prüfung.
 
 ---
 
+### Fast-Lane (Label `track:fast`) — reduzierte, dokumentierte Tiefe
+
+```bash
+FAST=$(gh pr view <nr> --json labels --jq '[.labels[].name] | index("track:fast") != null')
+```
+
+Ist `track:fast` gesetzt (vom ARCHITECT für triviale Items: Preflight-Score ≤ 2, Einzeldatei,
+keine neue Dependency, kein Schema/Migration, kein Auth/PII-Bezug), fährst du eine bewusst
+verkürzte Prüfung — **Rollen und Isolation bleiben unangetastet, nur die Tiefe skaliert mit dem Risiko:**
+
+- **Immer:** Prüfpunkt 1 (Contract-Qualität), 2 (AC-Interpretation), 7 (conventions/Anti-Generik).
+- **Konditional:** Prüfpunkt 5 (Observability) und 6 (Performance) NUR, wenn der Diff Endpoints,
+  Adapter/externe Calls, Queries oder Migrationen berührt. Andernfalls dokumentiert überspringen.
+- **Übersprungen (dokumentiert):** Prüfpunkt 3 (Designgüte) und 4 (Docs-Substanz), sofern der
+  Diff eine einzelne Datei ohne Schnittstellenänderung ist.
+
+Dokumentiere im Verdikt explizit, welche Prüfpunkte du warum übersprungen hast
+(„track:fast: 3/4 übersprungen — Einzeldatei ohne Schnittstellenänderung"). Bei jedem Zweifel
+an der Trivialität brichst du die Fast-Lane ab und fährst das volle 7-Punkte-Programm.
+
+Ohne `track:fast` gilt unverändert das volle Programm (alle 7 Prüfpunkte).
+
+---
+
 ### Prüfpunkt 1 — Acceptance-Contract-Qualität
 
 Gates prüfen Existenz und Unveränderlichkeit. Du prüfst Qualität:
@@ -181,6 +205,13 @@ Abschnitt 5. Ziel: professioneller, projekt-idiomatischer Code statt generischem
 Ein Verstoß ist ein Finding, kein Stilgeschmack. Tote Reste / verschluckte Fehler /
 verbotene Libs sind mindestens `medium`.
 
+**Ausnahme — unveränderliche Contract-Dateien (`tests/acceptance/story_<nr>/`):** Diese sind
+nach dem Contract-Commit eingefroren; ein Finding daran lässt sich nur per
+`human-override:test-contract` beheben (teurer Zyklus). Melde gegen den Contract deshalb
+NUR `critical`/`high` (echte AC-/Korrektheitsprobleme) als blockierendes Finding. Stil-Kleinkram
+(Kommentar-Rauschen, Namens-Nuancen) im Contract ist **nicht blockierend** — der TEST-AUTHOR
+prüft das bereits per Self-Check vor dem Commit. Für Produktivcode gilt Prüfpunkt 7 unverändert.
+
 Finding-Kategorie: `[low][sonstiges]` bis `[medium][sonstiges]` (bzw. spezifischer, z. B. `[medium][dependency]`)
 
 ---
@@ -235,5 +266,6 @@ git worktree remove "../$(basename "$PWD")-review-<nr>"
 
 ## DONE-KRITERIUM
 
-CI-Gates-Status verifiziert · alle 7 Prüfpunkte dokumentiert · Verdikt + Label + HANDOFF ·
-Review-Worktree entfernt · Session beenden.
+CI-Gates-Status verifiziert · alle relevanten Prüfpunkte dokumentiert (volles 7-Punkte-Programm;
+bei `track:fast` die reduzierte Auswahl inkl. Begründung der übersprungenen) · Verdikt + Label +
+HANDOFF · Review-Worktree entfernt · Session beenden.

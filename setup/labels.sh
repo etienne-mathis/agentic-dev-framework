@@ -40,12 +40,16 @@ echo "Lege Steuerungs-Labels an..."
 for l in \
   "needs-human:#b60205" \
   "source:retrospective:#0052cc" \
-  "perf-kritisch:#e4e669"; do
+  "perf-kritisch:#e4e669" \
+  "merge-hold:#d93f0b" \
+  "track:fast:#c5def5"; do
   NAME="${l%:*}"
   COLOR="${l##*:}"
   gh label create "$NAME" --color "$COLOR" --force
   echo "  $NAME"
 done
+# merge-hold: menschlicher Not-Aus gegen Auto-Merge (autonomy: autonomous).
+# track:fast: Fast-Lane für triviale Items (Haiku + reduzierte Review-Tiefe).
 
 echo "Lege human-override-Labels an (nur durch Menschen setzbar)..."
 for l in \
@@ -59,4 +63,4 @@ for l in \
 done
 
 echo ""
-echo "Alle 23 Labels angelegt."
+echo "Alle 25 Labels angelegt."

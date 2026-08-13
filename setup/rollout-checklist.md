@@ -39,7 +39,17 @@ Geschätzte Dauer: ~45 Minuten für Phase 0.
 - [ ] "Dismiss stale reviews when new commits are pushed" aktiviert
 - [ ] Force-Push blockiert
 - [ ] Required Status Checks: `test` · `gates` · `audit` · `test-contract` · `commitlint` · `protected-paths` · `invalidate-verdict` · `framework-selftest`
-- [ ] Auto-Merge deaktiviert lassen
+- [ ] Auto-Merge deaktiviert lassen (Default: `autonomy: supervised` → Mensch mergt)
+
+**Optional — autonomer Modus (`autonomy: autonomous` in CLAUDE.md):**
+Nur bewusst pro Projekt aktivieren. Dann mergt `auto-merge.yml` einen PR automatisch (squash),
+sobald `status:approved` + alle Required Checks grün + KEIN `needs-human`/`human-override:*`/`merge-hold`.
+Voraussetzung an die Branch-Protection:
+- [ ] Kein erzwungener menschlicher Review (die CODEOWNERS-Approval-Pflicht würde den
+  API-Merge des Workflows blockieren, da Agenten nie via GitHub approven) — die Kontrolle
+  liegt stattdessen bei CSO-`status:approved` + den Required Checks + dem Not-Aus `merge-hold`.
+- [ ] Required Status Checks bleiben Pflicht (sie sind das eigentliche Qualitätstor).
+- [ ] `merge-hold`-Label als menschlicher Not-Aus bekannt (setzt Auto-Merge sofort aus).
 
 ### CODEOWNERS
 
