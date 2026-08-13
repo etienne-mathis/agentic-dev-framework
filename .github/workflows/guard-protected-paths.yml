@@ -22,7 +22,7 @@ jobs:
           # Geschützte Pfade: Agent-Konfiguration, CI, Framework-Protokoll,
           # Framework-Skripte (Gates dürfen nicht abgeschwächt werden).
           BLOCKED=$(echo "$CHANGED" | grep -E \
-            '^(\.claude/|\.github/|CLAUDE\.md$|docs/PROTOCOL\.md$|scripts/(glossar_gate|preflight|preflight-calibrate|preflight-dedup)\.sh$)' || true)
+            '^(\.claude/|\.github/|CLAUDE\.md$|docs/PROTOCOL\.md$|scripts/(glossar_gate|preflight|preflight-calibrate|preflight-dedup|measure-run)\.sh$|scripts/ci/)' || true)
 
           if [ -z "$BLOCKED" ]; then
             echo "Keine geschützten Pfade betroffen."

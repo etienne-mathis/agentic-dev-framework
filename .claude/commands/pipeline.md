@@ -161,6 +161,30 @@ Rolle DEVELOPER im gewählten Tier.
 
 Logge vor jedem Spawn eine Zeile: `SPAWN <rolle> #<nr> model=<tier> (frisch)`.
 
+**Echte Verbrauchsmessung (P3.0) — nach jedem Spawn:** Halte den UTC-Zeitpunkt VOR
+dem Spawn fest, spawne die Rolle, und rufe nach ihrer Rückkehr `measure-run.sh` für
+genau dieses Zeitfenster auf. Das schreibt den tatsächlichen Token-Verbrauch des Spawns
+(aus den Claude-Code-Session-jsonl) nach `.preflight/actuals.tsv` und ist die Datenbasis
+für `preflight-calibrate.sh` und den Head-to-Head-Vergleich.
+
+`<issue>` ist die **Story-Nummer** (bei reviewer/cso die Story, die der PR schließt),
+damit sich alle Rollen-Spawns einer Story in der Kalibrierung aggregieren; bei
+architect auf Epic/Input die verarbeitete Nummer.
+
+```bash
+SPAWN_FROM=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+# … Agent(subagent_type=<rolle>, model=…, prompt=…) läuft hier …
+SPAWN_TO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+bash scripts/measure-run.sh \
+  --issue "<issue>" --rolle "<rolle>" --modell "<TIER>" \
+  --from "$SPAWN_FROM" --to "$SPAWN_TO" --source-dir . \
+  || echo "ACTUALS <rolle> #<issue> — Messung übersprungen (keine Session-Daten)"
+# Log-Zeile aus der letzten actuals-Zeile ableiten:
+tail -1 .preflight/actuals.tsv | awk -F'\t' \
+  '{printf "ACTUALS %s #%s tokens=%s/%s t=%ss\n",$2,$1,$4,$5,$7}'
+```
+
 Abhängigkeits-Auflösung nach jedem Developer-Done:
 ```bash
 # Prüfe welche status:backlog-Stories jetzt status:ready werden können

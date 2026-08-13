@@ -2,11 +2,14 @@
 ###############################################################################
 # preflight-calibrate.sh — Feedback-Loop für die Token-Kalibrierung (A.3)
 #
-# Ehrliche Randbedingung: echter Token-Verbrauch ist generisch nicht messbar.
-# Dieser Loop nutzt PROXYS aus GitHub-Daten. Er liest .preflight/estimates.tsv
-# (das der Preflight im Issue-Modus schreibt) und ermittelt je gemergtem
-# Story-PR den Ist-Proxy:
-#   - Diff-Größe   (gh pr diff --stat: Insertions + Deletions)
+# Anker-Hierarchie (P3.0):
+#   1. ECHTE Ist-Tokens aus .preflight/actuals.tsv (measure-run.sh liest sie aus
+#      den Claude-Code-Session-jsonl). Wenn vorhanden → primärer Anker.
+#   2. Diff-Größen-PROXY aus GitHub-Daten (Fallback, wenn keine actuals.tsv da ist).
+# Er liest .preflight/estimates.tsv (das der Preflight im Issue-Modus schreibt) und
+# ermittelt je gemergtem Story-PR:
+#   - Ist-Tokens   (Summe in+out aller Rollen-Spawns des Issues aus actuals.tsv)
+#   - Diff-Größe   (Insertions + Deletions aus dem Patch — Proxy-Fallback)
 #   - Zyklen       (cycle: aus HANDOFF-Kommentaren am PR — Re-Submissions)
 # Ausgabe je Tier: geschätzt vs. Ist-Proxy (Median) + Korrekturvorschlag für
 # die TOKENS_*-Konstanten in preflight.sh.
@@ -49,6 +52,22 @@ if [ ! -f "$EST" ]; then
 fi
 
 TMPD=$(mktemp -d); trap 'rm -rf "$TMPD"' EXIT
+
+# Echte Ist-Tokens (P3.0): wenn measure-run.sh eine actuals.tsv geschrieben hat,
+# nutzen wir sie als ANKER statt der Diff-Größe (Diff bleibt Fallback).
+# Spalten: issue \t rolle \t modell \t in \t out \t cache_read \t sekunden \t datum
+ACT=".preflight/actuals.tsv"
+USE_ACTUALS=0
+if [ -f "$ACT" ]; then
+  USE_ACTUALS=1
+  echo "Ist-Tokens gefunden ($ACT) — echte Messung als Anker (Diff-Proxy = Fallback)."
+fi
+
+# Summe der echten in+out-Tokens aller Rollen-Spawns eines Issues (0 wenn keine Daten).
+real_tokens_for() {  # $1 = issue-nr
+  [ "$USE_ACTUALS" -eq 1 ] || { echo 0; return; }
+  awk -F'\t' -v i="$1" '$1 !~ /^#/ && $1==i {s += $4 + $5} END {print s + 0}' "$ACT"
+}
 
 # Gemergte PRs einmalig holen (Body für closes-Zuordnung).
 MERGED=$(gh pr list --repo "$REPO" --state merged \
@@ -97,12 +116,20 @@ while IFS=$'\t' read -r issue tier tokens_est time_est datum; do
     | grep -oE 'cycle: *[0-9]+' | grep -oE '[0-9]+' | sort -n | tail -1 || true)
   [ -z "$cyc" ] && cyc=1
 
+  real=$(real_tokens_for "$issue")
+
   echo "$tokens_est"  >> "$TMPD/${tier}.est"
   echo "$diff_lines"  >> "$TMPD/${tier}.diff"
   echo "$cyc"         >> "$TMPD/${tier}.cyc"
+  [ "${real:-0}" -gt 0 ] && echo "$real" >> "$TMPD/${tier}.real"
   MATCHED=$((MATCHED+1))
-  printf '   #%-4s %-7s est~%-6s diff=%-5s cycles=%s  → PR #%s\n' \
-    "$issue" "$tier" "$tokens_est" "$diff_lines" "$cyc" "$pr"
+  if [ "${real:-0}" -gt 0 ]; then
+    printf '   #%-4s %-7s est~%-6s ist=%-7s diff=%-5s cycles=%s  → PR #%s\n' \
+      "$issue" "$tier" "$tokens_est" "$real" "$diff_lines" "$cyc" "$pr"
+  else
+    printf '   #%-4s %-7s est~%-6s diff=%-5s cycles=%s  → PR #%s\n' \
+      "$issue" "$tier" "$tokens_est" "$diff_lines" "$cyc" "$pr"
+  fi
 done < "$TMPD/est.tsv"
 
 if [ "$MATCHED" -eq 0 ]; then
@@ -112,26 +139,38 @@ if [ "$MATCHED" -eq 0 ]; then
   exit 0
 fi
 
-echo "──────────────────────────────────────────────────────────────────────"
-printf ' %-8s %-4s %-14s %-14s %s\n' "Tier" "n" "est_tokens(med)" "diff_lines(med)" "cycles(med)"
+# Metrik-Wahl: echte Ist-Tokens schlagen den Diff-Proxy, sobald genug Daten da sind.
+METRIC="diff"; METRIC_LABEL="diff_lines"
+if [ "$USE_ACTUALS" -eq 1 ] && ls "$TMPD"/*.real >/dev/null 2>&1; then
+  METRIC="real"; METRIC_LABEL="ist_tokens"
+fi
 
-# Anker für den Vorschlag: das Tier mit den meisten Datenpunkten.
-ANCHOR_TIER=""; ANCHOR_N=0; ANCHOR_DIFF=""
+echo "──────────────────────────────────────────────────────────────────────"
+printf ' %-8s %-4s %-14s %-14s %s\n' "Tier" "n" "est_tokens(med)" "${METRIC_LABEL}(med)" "cycles(med)"
+
+# Anker für den Vorschlag: das Tier mit den meisten Datenpunkten der gewählten Metrik.
+ANCHOR_TIER=""; ANCHOR_N=0; ANCHOR_METRIC=""
 for tier in Haiku Sonnet Opus; do
   [ -f "$TMPD/${tier}.est" ] || continue
   n=$(wc -l < "$TMPD/${tier}.est" | tr -d ' ')
   med_est=$(median "$TMPD/${tier}.est")
-  med_diff=$(median "$TMPD/${tier}.diff")
+  med_metric=$([ -f "$TMPD/${tier}.${METRIC}" ] && median "$TMPD/${tier}.${METRIC}" || echo "n/a")
   med_cyc=$(median "$TMPD/${tier}.cyc")
-  printf ' %-8s %-4s %-14s %-14s %s\n' "$tier" "$n" "$med_est" "$med_diff" "$med_cyc"
-  if [ "$n" -gt "$ANCHOR_N" ]; then
-    ANCHOR_N="$n"; ANCHOR_TIER="$tier"; ANCHOR_DIFF="$med_diff"
+  printf ' %-8s %-4s %-14s %-14s %s\n' "$tier" "$n" "$med_est" "$med_metric" "$med_cyc"
+  # Anker-Kandidat braucht einen belastbaren Metrik-Wert.
+  m_n=$([ -f "$TMPD/${tier}.${METRIC}" ] && wc -l < "$TMPD/${tier}.${METRIC}" | tr -d ' ' || echo 0)
+  if [ "$m_n" -gt "$ANCHOR_N" ]; then
+    ANCHOR_N="$m_n"; ANCHOR_TIER="$tier"; ANCHOR_METRIC="$med_metric"
   fi
 done
 
 echo "──────────────────────────────────────────────────────────────────────"
-echo " Korrekturvorschlag (Proxy-basiert — Diff-Größe als Aufwands-Stellvertreter):"
-echo " Anker = Tier mit den meisten Datenpunkten: $ANCHOR_TIER ($ANCHOR_N Läufe)."
+if [ "$METRIC" = "real" ]; then
+  echo " Korrekturvorschlag (Ist-Tokens aus measure-run.sh — echte Messung):"
+else
+  echo " Korrekturvorschlag (Proxy-basiert — Diff-Größe als Aufwands-Stellvertreter):"
+fi
+echo " Anker = Tier mit den meisten ${METRIC_LABEL}-Datenpunkten: ${ANCHOR_TIER:-keins} ($ANCHOR_N Läufe)."
 
 case "$ANCHOR_TIER" in
   Haiku)  ANCHOR_TOK=$TOKENS_HAIKU ;;
@@ -139,26 +178,32 @@ case "$ANCHOR_TIER" in
   Opus)   ANCHOR_TOK=$TOKENS_OPUS ;;
 esac
 
-if [ -z "${ANCHOR_DIFF:-}" ] || [ "$ANCHOR_DIFF" = "0" ] || [ "$ANCHOR_DIFF" = "n/a" ]; then
-  echo " Ist-Proxy des Ankers ist 0/n/a — kein belastbares Verhältnis. Manuell prüfen."
+if [ -z "${ANCHOR_METRIC:-}" ] || [ "$ANCHOR_METRIC" = "0" ] || [ "$ANCHOR_METRIC" = "n/a" ]; then
+  echo " Anker-Metrik ist 0/n/a — kein belastbares Verhältnis. Manuell prüfen."
 else
-  echo " Skaliert TOKENS_* so, dass sie dem beobachteten Diff-Größen-Verhältnis folgen"
-  echo " (Anker-Token bleiben fix):"
+  if [ "$METRIC" = "real" ]; then
+    echo " Setzt TOKENS_* auf den gemessenen Median-Verbrauch je Tier direkt:"
+  else
+    echo " Skaliert TOKENS_* so, dass sie dem beobachteten Diff-Größen-Verhältnis folgen"
+    echo " (Anker-Token bleiben fix):"
+  fi
   for tier in Haiku Sonnet Opus; do
-    [ -f "$TMPD/${tier}.diff" ] || continue
-    med_diff=$(median "$TMPD/${tier}.diff")
+    [ -f "$TMPD/${tier}.${METRIC}" ] || continue
+    med_metric=$(median "$TMPD/${tier}.${METRIC}")
     case "$tier" in
       Haiku)  cur=$TOKENS_HAIKU ;;
       Sonnet) cur=$TOKENS_SONNET ;;
       Opus)   cur=$TOKENS_OPUS ;;
     esac
-    if [ "$tier" = "$ANCHOR_TIER" ]; then
-      printf '   TOKENS_%s: %s  (Anker — unverändert)\n' \
-        "$(echo "$tier" | tr 'a-z' 'A-Z')" "$cur"
+    TU=$(echo "$tier" | tr 'a-z' 'A-Z')
+    if [ "$METRIC" = "real" ]; then
+      # Echte Messung: der gemessene Median IST der neue Vorschlag.
+      printf '   TOKENS_%s: %s  → Vorschlag %s  (gemessener Median)\n' "$TU" "$cur" "$med_metric"
+    elif [ "$tier" = "$ANCHOR_TIER" ]; then
+      printf '   TOKENS_%s: %s  (Anker — unverändert)\n' "$TU" "$cur"
     else
-      sugg=$(( ANCHOR_TOK * med_diff / ANCHOR_DIFF ))
-      printf '   TOKENS_%s: %s  → Vorschlag %s  (aktuell %s)\n' \
-        "$(echo "$tier" | tr 'a-z' 'A-Z')" "$cur" "$sugg" "$cur"
+      sugg=$(( ANCHOR_TOK * med_metric / ANCHOR_METRIC ))
+      printf '   TOKENS_%s: %s  → Vorschlag %s  (aktuell %s)\n' "$TU" "$cur" "$sugg" "$cur"
     fi
   done
   echo

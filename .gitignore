@@ -2,3 +2,6 @@
 # Der verwertbare Kalibrierungs-Report lebt getrackt in der Retrospektive
 # (docs/retrospective/*.md, Sektion 7).
 .preflight/estimates.tsv
+# Echte Token-Messung (P3.0): lokale, maschinenspezifische Ist-Werte aus den
+# Claude-Code-Session-jsonl. Nicht tracken — verwertbare Aggregate landen im Report.
+.preflight/actuals.tsv
