@@ -139,12 +139,11 @@ jobs:
       - name: Read block_ab threshold from CLAUDE.md
         id: threshold
         run: |
-          # Nur den Wert direkt nach 'block_ab:' nehmen — der Kommentar
-          # (# critical | high | medium | low) darf nicht mitgelesen werden.
-          BLOCK_AB=$(sed -n 's/^[[:space:]]*block_ab:[[:space:]]*\([a-z]*\).*/\1/p' CLAUDE.md | head -1)
-          [ -z "$BLOCK_AB" ] && BLOCK_AB=high
-          # Hinweis: npm audit nutzt 'moderate' statt 'medium'. Bei npm-Alternative unten:
-          #   [ "$BLOCK_AB" = "medium" ] && BLOCK_AB=moderate
+          # Kern-Logik in scripts/ci/read-block-ab.sh (single source of truth, vom
+          # Selbsttest-Harness getestet). Nimmt genau den Wert nach 'block_ab:',
+          # ignoriert Inline-Kommentar, Default 'high'.
+          # Für die npm-Alternative unten: --npm ergänzen (medium → moderate).
+          BLOCK_AB=$(bash scripts/ci/read-block-ab.sh CLAUDE.md)
           echo "block_ab=$BLOCK_AB" >> "$GITHUB_OUTPUT"
 
       # ── Python: pip-audit ─────────────────────────────────────────────────
@@ -180,6 +179,8 @@ jobs:
           PYEOF
 
       # ── Node Alternative: npm audit ───────────────────────────────────────
+      # npm audit kennt kein 'medium' → im threshold-Step oben --npm ergänzen:
+      #   BLOCK_AB=$(bash scripts/ci/read-block-ab.sh --npm CLAUDE.md)
       # - uses: actions/setup-node@v4
       #   with:
       #     node-version: "<<<NODE_VERSION>>>"
@@ -201,24 +202,10 @@ jobs:
 
       - name: Validate commit messages
         run: |
+          # Kern-Logik in scripts/ci/commitlint.sh (single source of truth, vom
+          # Selbsttest-Harness getestet): Konvention + Contract-Ausnahme + --no-merges.
           git fetch origin "${{ github.base_ref }}" --depth=50
-
-          PATTERN='^(feat|fix|refactor|test|docs|chore)(\([a-z0-9_-]+\))?: .{1,100} \(#[0-9]+\)$'
-          # Acceptance-Contract-Commits folgen einer eigenen, vom test-contract-Guard
-          # erzwungenen Konvention (test-author.md) und sind hier ausdrücklich zulässig:
-          CONTRACT='^test(\([a-z0-9_-]+\))?: (add|revise) acceptance contract for #[0-9]+( \[AC-.*\])?$'
-          FAILED=0
-
-          while IFS= read -r MSG; do
-            if echo "$MSG" | grep -qE "$PATTERN"; then continue; fi
-            if echo "$MSG" | grep -qE "$CONTRACT"; then continue; fi
-            echo "::error::Ungültige Commit-Message: '$MSG'"
-            echo "  Erwartet: type(scope): kurze beschreibung (#issue-nr)"
-            echo "  Typen:    feat | fix | refactor | test | docs | chore"
-            FAILED=1
-          done < <(git log "origin/${{ github.base_ref }}..HEAD" --no-merges --format="%s")
-
-          [ "$FAILED" -eq 1 ] && exit 1 || echo "commitlint: all messages valid."
+          bash scripts/ci/commitlint.sh --range "origin/${{ github.base_ref }}..HEAD"
 
 ##############################################################################
 # NACH DEM BEFÜLLEN:

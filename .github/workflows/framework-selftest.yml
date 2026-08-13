@@ -1,0 +1,33 @@
+name: framework-selftest
+
+# Selbsttest des Frameworks (P3.1): führt tests/framework/run.sh bei jedem PR
+# und Push auf main aus. Testet die extrahierte Guard-/CI-Logik (scripts/ci/*.sh)
+# und die Preflight-Skripte gegen synthetische Fixtures — inkl. der drei
+# historischen E2E-Bugs als Regressions-Beweis und beider Stacks (python + node).
+#
+# PFLICHT: als Required Check auf main eintragen (job.name: framework-selftest).
+# Damit ist Regression der Guard-/CI-Logik strukturell ausgeschlossen.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  framework-selftest:
+    name: framework-selftest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # der Harness baut eigene temporäre git-Repos für die Contract-Tests
+
+      - name: git identity (für synthetische Fixture-Repos)
+        run: |
+          git config --global user.email "selftest@framework.local"
+          git config --global user.name "framework-selftest"
+          git config --global init.defaultBranch main
+
+      - name: Run self-test harness
+        run: bash tests/framework/run.sh

@@ -1,0 +1,10 @@
+{
+  "name": "golden-node",
+  "version": "0.0.1",
+  "description": "Smallest runnable node project for the framework stack matrix.",
+  "type": "module",
+  "main": "src/calc.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

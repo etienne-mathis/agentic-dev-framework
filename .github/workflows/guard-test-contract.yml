@@ -16,63 +16,14 @@ jobs:
         env:
           OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'human-override:test-contract') }}
         run: |
-          # Nur für Story-Branches relevant
+          # Regel-Logik (1–4) in scripts/ci/check-test-contract.sh (single source
+          # of truth, auch vom Selbsttest-Harness getestet). Hier nur das Umfeld-
+          # Glue: Story-Nummer aus dem Branch, Basis-Fetch, Label→OVERRIDE.
           NR=$(echo "${{ github.head_ref }}" | grep -oE '^story/[0-9]+' | grep -oE '[0-9]+' || true)
           if [ -z "$NR" ]; then
             echo "Kein story/-Branch — Guard übersprungen."
             exit 0
           fi
-
-          DIR="tests/acceptance/story_${NR}"
-          git fetch origin "${{ github.base_ref }}" --depth=1
-          RANGE="origin/${{ github.base_ref }}...HEAD"
-
-          # Regel 1: Contract-Verzeichnis muss existieren
-          if [ ! -d "$DIR" ]; then
-            echo "::error::Acceptance-Contract fehlt: $DIR"
-            echo "Der test-author-Subagent muss vor der Implementierung laufen."
-            exit 1
-          fi
-
-          # Regel 2: Der erste Commit der DIR berührt, darf NUR tests/ anfassen
-          # (stellt sicher dass der Contract-Commit sauber ist, nicht mit Impl. vermischt)
-          FIRST=$(git log --reverse --format='%H' $RANGE -- "$DIR" | head -1)
-          if [ -n "$FIRST" ]; then
-            BAD=$(git show --name-only --format= "$FIRST" | grep -v '^tests/' | grep -v '^$' || true)
-            if [ -n "$BAD" ]; then
-              echo "::error::Contract-Commit ist nicht rein (nur tests/ erlaubt):"
-              echo "$BAD"
-              exit 1
-            fi
-          fi
-
-          # Regel 3: Baseline = letzter 'add|revise acceptance contract'-Commit;
-          # nach diesem Commit darf DIR nicht mehr verändert worden sein.
-          # Trennt bewusste Revisionen (menschlich autorisiert) von stillen Änderungen.
-          BASE=$(git log --format='%H %s' $RANGE -- "$DIR" \
-                 | grep -E ' test(\(.+\))?: (add|revise) acceptance contract' \
-                 | head -1 | awk '{print $1}')
-
-          if [ -z "$BASE" ]; then
-            echo "::error::Kein Contract-Commit nach Konvention gefunden."
-            echo "Erwartet: 'test(<modul>): add acceptance contract for #${NR} [AC-1..AC-n]'"
-            exit 1
-          fi
-
-          # Prüfen ob nach dem Baseline-Commit noch Änderungen an DIR vorliegen
-          CHANGED=$(git diff "$BASE"..HEAD -- "$DIR")
-          if [ -n "$CHANGED" ]; then
-            echo "::error::Contract wurde nach dem Baseline-Commit verändert."
-            echo "Revisionen erfordern human-override:test-contract + revise-Commit."
-            exit 1
-          fi
-
-          # Regel 4: Revisionen (revise-Commits) erfordern menschliches Override-Label
-          REVISED=$(git log --format='%s' $RANGE -- "$DIR" | grep -c 'revise acceptance contract' || true)
-          if [ "$REVISED" -gt 0 ] && [ "$OVERRIDE" != "true" ]; then
-            echo "::error::Contract-Revision ohne Label 'human-override:test-contract'."
-            echo "Label nur durch den Menschen setzbar."
-            exit 1
-          fi
-
-          echo "OK — Acceptance-Contract intakt."
+          git fetch origin "${{ github.base_ref }}" --depth=50
+          OVERRIDE="$OVERRIDE" bash scripts/ci/check-test-contract.sh \
+            "$NR" "origin/${{ github.base_ref }}"

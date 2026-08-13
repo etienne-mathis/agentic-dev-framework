@@ -38,7 +38,7 @@ Geschätzte Dauer: ~45 Minuten für Phase 0.
 - [ ] 1 Approving Review von CODEOWNERS erforderlich
 - [ ] "Dismiss stale reviews when new commits are pushed" aktiviert
 - [ ] Force-Push blockiert
-- [ ] Required Status Checks: `test` · `gates` · `audit` · `test-contract` · `commitlint` · `protected-paths` · `invalidate-verdict`
+- [ ] Required Status Checks: `test` · `gates` · `audit` · `test-contract` · `commitlint` · `protected-paths` · `invalidate-verdict` · `framework-selftest`
 - [ ] Auto-Merge deaktiviert lassen
 
 ### CODEOWNERS
@@ -50,10 +50,30 @@ Geschätzte Dauer: ~45 Minuten für Phase 0.
 - [ ] Secret Scanning aktivieren (Repo-Settings → Security → Secret scanning)
 - [ ] Push Protection aktivieren
 
+### Stack-Matrix-Konformität (Voraussetzung vor Onboarding)
+
+Bevor ein neues Projekt onboardet, muss der Selbsttest-Harness des Frameworks grün
+sein — inklusive **beider** golden projects (python UND node). Das stellt sicher, dass
+die Guard-/CI-Logik stack-agnostisch ist (schützt gegen die P1.4-Klasse: hardcodierte
+Stack-Pfade) und dass die drei historischen E2E-Bugs nicht regrediert sind.
+
+- [ ] Harness lokal grün:
+  ```bash
+  bash tests/framework/run.sh
+  # erwartet: "0 Fehlschläge" für alle Suites (commitlint, block_ab, protected-paths,
+  # test-contract, preflight, golden python+node)
+  ```
+- [ ] Der Check `framework-selftest` ist auf `main` als Required Check aktiv.
+- [ ] Passt der Ziel-Stack nicht zu python/node? Dann zuerst ein golden project für
+  den neuen Stack unter `tests/framework/golden/<stack>/` ergänzen und die Suites
+  `test_golden.sh` / `test_test_contract.sh` um die Variante erweitern, bevor onboardet wird.
+
 ### CI einrichten
 
-Die drei Guard-Workflows (`invalidate-verdict.yml`, `guard-protected-paths.yml`, `guard-test-contract.yml`)
-sind bereits aktiv — kein Anpassen nötig, laufen auf jedem PR.
+Die Guard-Workflows (`invalidate-verdict.yml`, `guard-protected-paths.yml`, `guard-test-contract.yml`,
+`framework-selftest.yml`) sind bereits aktiv — kein Anpassen nötig, laufen auf jedem PR.
+Die Guard-/CI-Kernlogik liegt zentral in `scripts/ci/*.sh` (single source of truth); die
+Workflows rufen sie nur auf und werden vom Selbsttest-Harness mitgetestet.
 
 Für den vollständigen CI (test, gates, audit, commitlint):
 

@@ -1,0 +1,9 @@
+[project]
+name = "golden-python"
+version = "0.0.1"
+description = "Smallest runnable python project for the framework stack matrix."
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
