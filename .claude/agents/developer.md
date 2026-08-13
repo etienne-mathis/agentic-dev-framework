@@ -112,6 +112,20 @@ Prüfe die Rückgabe:
 - Enthält Rückgabe `BLOCKER AC-<k>: ...` → ESCALATION `reason: ac-nicht-umsetzbar`,
   Session beenden
 
+**Fallback — test-author-Subagent nicht verfügbar** (z. B. `.claude/agents/test-author.md`
+fehlt in der Projekt-Instanz): Du führst den Contract-Schritt SELBST aus, mit exakt
+denselben Regeln wie test-author (siehe `.claude/agents/test-author.md`, falls vorhanden):
+- Output ausschließlich unter `tests/acceptance/story_<nr>/`, je AC eine Testdatei.
+  Dateiendung folgt dem Stack aus `CLAUDE.md` (`.py` / `.test.js` / …). Das Verzeichnis
+  `tests/acceptance/story_<nr>/` ist die einzige feste Konvention — der `test-contract`-CI-Guard
+  erzwingt sie sprachunabhängig. Schreibst du Acceptance-Tests nach `tests/unit/` o. ä.,
+  schlägt der Guard fehl.
+- Rot-Beweis mit `befehle.test`, gefiltert auf das story-Verzeichnis.
+- Genau EIN Contract-Commit, nur `tests/`, keine Produktivcode-Datei:
+  `test(<modul>): add acceptance contract for #<nr> [AC-1..AC-n]`
+- Danach getrennt weiter mit der Implementierung (Schritt 2). Der Contract-Commit muss
+  rein bleiben (keine `src/`-Änderung im selben Commit) — sonst blockt der Guard.
+
 Du änderst **niemals** Dateien unter `tests/acceptance/` (wird durch `test-contract`-CI-Guard erzwungen).
 Hältst du den Contract für falsch → ESCALATION, nie eigenhändig anpassen.
 Nach menschlicher DECISION mit Contract-Revision: Mensch setzt `human-override:test-contract`,

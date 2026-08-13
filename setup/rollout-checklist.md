@@ -14,6 +14,16 @@ Geschätzte Dauer: ~45 Minuten für Phase 0.
   ```
   Alternativ: Template-Verzeichnis in bestehendes Repo kopieren.
 
+- [ ] Agenten-Set vollständig? Prüfen, dass ALLE Rollen-Prompts mitgekommen sind
+  (v. a. bei manueller Kopie in ein bestehendes Repo):
+  ```bash
+  for a in architect developer reviewer cso retro test-author; do
+    test -f ".claude/agents/$a.md" && echo "ok $a" || echo "FEHLT $a"
+  done
+  ```
+  Fehlt `test-author.md`, kann der DEVELOPER den Contract-Schritt zwar per Fallback selbst
+  ausführen (siehe `developer.md` Schritt 1c), sauberer ist aber die vollständige Kopie.
+
 ### Labels
 
 - [ ] Labels anlegen:
