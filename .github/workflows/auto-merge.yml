@@ -76,10 +76,12 @@ jobs:
                 else "pending" end' 2>/dev/null || echo "pending")
             echo "checks=$CHECKS"
 
-            # 3 — Gate entscheiden (getestete Logik)
+            # 3 — Gate entscheiden (getestete Logik). Der Gate signalisiert HOLD mit
+            # Exit 10 — unter GitHub Actions (-e) darf das den Step NICHT abbrechen,
+            # daher '|| GRC=$?' (fängt den Nicht-Null-Exit, ohne -e auszulösen).
+            GRC=0
             GATE=$(printf '%s\n' "$LABELS" \
-              | bash scripts/ci/auto-merge-gate.sh --autonomy "$AUTONOMY" --checks "$CHECKS")
-            GRC=$?
+              | bash scripts/ci/auto-merge-gate.sh --autonomy "$AUTONOMY" --checks "$CHECKS") || GRC=$?
             echo "$GATE"
             if [ "$GRC" -ne 0 ]; then echo "Kein Merge für #$PR."; continue; fi
 
