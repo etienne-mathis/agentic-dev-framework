@@ -625,6 +625,10 @@ Vollständige Protokoll-Spezifikation: `docs/PROTOCOL.md`
 ├── docs/
 │   ├── PROTOCOL.md                   # Kanonische Schemata — nicht ändern
 │   ├── GLOSSARY.md                   # Ubiquitous Language des Projekts — seeden
+│   ├── product-concept.adoc          # Doc-Kanon: Problem/ICP/Scope (ARCHITECT liest)
+│   ├── architecture.adoc             # Doc-Kanon: Stil/Layer/Module/ADRs (ARCHITECT+DEVELOPER)
+│   ├── conventions.adoc              # Doc-Kanon: Coding-Konventionen (DEVELOPER liest, REVIEWER prüft)
+│   ├── current-state.adoc            # Doc-Kanon: Prosa-Stand (RETRO pflegt)
 │   ├── adr/                          # Architecture Decision Records (vom RETRO)
 │   └── retrospective/
 │       └── TEMPLATE.md               # Retro-Vorlage

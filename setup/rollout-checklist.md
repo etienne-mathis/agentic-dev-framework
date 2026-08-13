@@ -88,6 +88,18 @@ Für den vollständigen CI (test, gates, audit, commitlint):
 - [ ] `docs/GLOSSARY.md` mit 5–10 Kernentitäten des Projekts befüllen.
   Ohne Glossar hat der ARCHITECT keine Sprachbasis und erzeugt inkonsistente Terminologie.
 
+### Doc-Kanon projektspezifisch ausfüllen
+
+Die vier Kanon-Dateien werden mit agnostischer Baseline ausgeliefert und enthalten
+`<AUSFÜLLEN: ...>`-Platzhalter sowie `// onboarding:`-Hinweise. Beim Onboarding konkretisieren:
+
+- [ ] `docs/product-concept.adoc` — Problem, ICP, Scope In/Out, messbare Erfolgskriterien, USP.
+- [ ] `docs/architecture.adoc` — Tech-Stack, Module (= CLAUDE.md `module`), Datenmodell,
+  erste ADRs. Layer-Baseline ist bereits gesetzt; nur bei Abweichung anpassen.
+- [ ] `docs/conventions.adoc` — Abschnitt 5 (Formatter/Linter, bevorzugte/verbotene Libs,
+  Namens-/Fehlerkonventionen). Baseline-Anti-Generik-Regeln gelten sofort.
+- [ ] `docs/current-state.adoc` — beim Projektstart einmal initialisieren; danach pflegt der RETRO.
+
 ### Preflight-Existenz-Check
 
 - [ ] `scripts/preflight.sh` ist ausführbar (`chmod +x scripts/preflight.sh`).

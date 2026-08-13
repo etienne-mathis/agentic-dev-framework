@@ -1,0 +1,77 @@
+= Product Concept
+:toc: macro
+:toclevels: 2
+
+// KANON-DOKUMENT (Teil des Framework-Doc-Kanons).
+// Baseline agnostisch gültig. Beim Onboarding projektspezifisch ausfüllen —
+// Zeilen mit <AUSFÜLLEN: ...> ersetzen, // onboarding:-Kommentare abarbeiten.
+// Gelesen vom ARCHITECT (Input->Epic, Scope-Entscheidungen). Nie Lösungsdesign hier — das gehört in architecture.adoc.
+
+toc::[]
+
+== Zweck dieses Dokuments
+
+Dieses Dokument ist die *lösungsfreie* Quelle der Wahrheit für das WAS und WARUM des
+Produkts. Es beantwortet: Welches Problem lösen wir, für wen, und woran messen wir Erfolg.
+Der ARCHITECT liest es vor jeder Input->Epic-Formalisierung, um Scope-Entscheidungen zu
+verankern. Technische Umsetzung steht ausdrücklich NICHT hier (siehe architecture.adoc).
+
+Agnostische Regel: Jede Aussage ist lösungsfrei formuliert (Problem, nicht Feature) und,
+wo möglich, messbar. Vermeide Marketing-Sprache und hohle Superlative.
+
+== 1 — Problem & Outcome
+
+// onboarding: Das Kernproblem in 2–4 Sätzen, lösungsfrei. Kein Feature, keine Technik.
+<AUSFÜLLEN: Welches konkrete Problem existiert heute? Wen kostet es was?>
+
+Gewünschtes Outcome (Zielzustand, ebenfalls lösungsfrei):
+
+// onboarding: Woran erkennt man, dass das Problem gelöst ist — unabhängig von der Umsetzung?
+<AUSFÜLLEN: Zielzustand>
+
+== 2 — Zielnutzer / ICP
+
+Agnostische Regel: Ein Produkt ohne benannten Nutzer ist nicht scope-fähig. Mindestens
+ein primäres Nutzerprofil ist Pflicht, mit dem konkreten Kontext, in dem es das Produkt nutzt.
+
+// onboarding: Primäres Nutzerprofil + dessen Job-to-be-done. Optional sekundäre Profile.
+* Primär: <AUSFÜLLEN: Wer? In welchem Kontext? Welcher Job-to-be-done?>
+
+== 3 — Scope
+
+Agnostische Regel: Scope wird *explizit in beide Richtungen* definiert. Was nicht in
+"In Scope" steht, ist out — im Zweifel out. Scope-Wachstum ist eine ARCHITECT-Eskalation
+(`reason: scope-wachstum`), keine stille Erweiterung.
+
+.In Scope
+// onboarding: Was das Produkt leistet.
+* <AUSFÜLLEN>
+
+.Out of Scope
+// onboarding: Was es bewusst NICHT leistet (mind. so wichtig wie In Scope).
+* <AUSFÜLLEN>
+
+== 4 — Erfolgskriterien (messbar)
+
+Agnostische Regel: Jedes Kriterium ist beobachtbar oder zählbar. "Schnell", "gut",
+"benutzerfreundlich" sind ohne Schwellwert unzulässig.
+
+// onboarding: 2–5 messbare Kriterien.
+* <AUSFÜLLEN: z. B. "p95-Antwortzeit < 200 ms bei 100 parallelen Anfragen">
+
+== 5 — Positionierung & Abgrenzung
+
+Agnostische Regel: Wenn eine bestehende Lösung das Problem bereits deckt, braucht das
+Produkt ein klares Alleinstellungsmerkmal — sonst ist es ein Me-too und der Bau ist zu
+hinterfragen (vgl. Preflight-Existenz-Check gegen Redundanz).
+
+// onboarding: Wodurch unterscheidet sich das Produkt von bestehenden Alternativen?
+<AUSFÜLLEN: USP / Abgrenzung>
+
+== 6 — Randbedingungen
+
+Agnostische Regel: Bekannte harte Randbedingungen (Regulatorik, Datenschutz, Budget,
+Plattform-Zwänge) gehören hierher, damit der ARCHITECT sie im Epic-Scope berücksichtigt.
+
+// onboarding: z. B. DSGVO-Relevanz (siehe CLAUDE.md dsgvo_relevant), Plattform, Betriebsmodell.
+* <AUSFÜLLEN>

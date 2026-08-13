@@ -1,0 +1,46 @@
+= Current State
+:toc: macro
+:toclevels: 2
+
+// KANON-DOKUMENT (Teil des Framework-Doc-Kanons).
+// DYNAMISCH: wird fortgeschrieben, nicht einmalig ausgefüllt.
+// Gepflegt vom RETRO (nach N Merges) und bei größeren Meilensteinen. Prosa-Ergänzung zur GitHub-State-Machine.
+// Zweck: menschenlesbarer Kaltstart-Einstieg — "Wo steht das Projekt gerade und warum".
+
+toc::[]
+
+== Zweck dieses Dokuments
+
+Die GitHub-Labels sind der Maschinen-Zustand (was ist offen/in Arbeit/fertig). Dieses
+Dokument ist der *menschenlesbare Prosa-Zustand*: Es fasst in wenigen Absätzen zusammen,
+was gebaut ist, woran gerade gearbeitet wird, welche Entscheidungen offen sind und welche
+bekannten Schulden existieren. Es ermöglicht einen Kaltstart, ohne den ganzen Issue-Verlauf
+zu lesen. Der RETRO-Agent schreibt es nach jedem Retro-Lauf fort.
+
+Agnostische Regel: kurz halten (Zielgröße ~1 Bildschirmseite). Abgeschlossenes wandert in
+knappe Historie oder wird gelöscht — dieses Dokument beschreibt die *Gegenwart*, kein Changelog.
+
+== Stand (zuletzt aktualisiert: <DATUM>)
+
+// onboarding/laufend: beim Projektstart mit dem initialen Stand befüllen, danach vom RETRO fortschreiben.
+_Noch nicht befüllt — beim Projektstart initialisieren._
+
+== 1 — Was ist gebaut
+
+// Kurze Liste der fertigen, gemergten Fähigkeiten (nicht jedes Issue — die groben Blöcke).
+* <AUSFÜLLEN>
+
+== 2 — Woran gerade gearbeitet wird
+
+// Aktueller Fokus / laufendes Epic. Verweise auf Issue-Nummern.
+* <AUSFÜLLEN>
+
+== 3 — Offene Entscheidungen
+
+// Ungelöste needs-human-Eskalationen oder bewusst vertagte Architekturfragen.
+* <AUSFÜLLEN>
+
+== 4 — Bekannte technische Schulden / Risiken
+
+// Bewusst akzeptierte Kompromisse, geplante Refactors, bekannte Schwachstellen.
+* <AUSFÜLLEN>

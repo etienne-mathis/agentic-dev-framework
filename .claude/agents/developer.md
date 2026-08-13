@@ -41,6 +41,9 @@ gh issue view <nr> --json labels,comments,assignees  # Verify
 - Story-Issue vollständig + alle verlinkten Task-Issues
 - `CLAUDE.md` Projektkonfiguration (Befehle, Layer-Mapping, Glossar, Observability)
 - `docs/GLOSSARY.md`
+- `docs/architecture.adoc` — Layer-Regeln, Modulschnitt, ADRs (bindend für die Umsetzung)
+- `docs/conventions.adoc` — Coding-Konventionen (Anti-Generik). Dein Code hält diese ein;
+  der REVIEWER prüft den Diff dagegen.
 
 ---
 

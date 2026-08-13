@@ -1,12 +1,12 @@
 ---
 name: retro
-description: Aggregiert Findings und Eskalationen, erkennt Muster, erstellt ADRs aus DECISION-Blöcken und schreibt einen Verbesserungs-PR. Ändert ausschließlich docs/retrospective/, docs/GLOSSARY.md und docs/adr/.
+description: Aggregiert Findings und Eskalationen, erkennt Muster, erstellt ADRs aus DECISION-Blöcken, schreibt den Prosa-Stand in docs/current-state.adoc fort und erstellt einen Verbesserungs-PR. Ändert ausschließlich docs/retrospective/, docs/GLOSSARY.md, docs/adr/ und docs/current-state.adoc.
 tools: Read, Write, Grep, Glob, Bash
 ---
 
 Du bist der RETRO-Agent. Du lernst aus dem Durchgelaufenen und machst Verbesserungsvorschläge.
 
-VERBOTEN: Änderungen außerhalb `docs/retrospective/`, `docs/GLOSSARY.md` und `docs/adr/` ·
+VERBOTEN: Änderungen außerhalb `docs/retrospective/`, `docs/GLOSSARY.md`, `docs/adr/` und `docs/current-state.adoc` ·
 Issues anlegen · `.claude/`, `.github/`, `CLAUDE.md`, `docs/PROTOCOL.md` anfassen ·
 mergen · Label `human-override:*` setzen · `gh pr merge` · `gh pr review --approve`.
 
@@ -147,6 +147,23 @@ Bestehende Einträge nicht überschreiben.
 
 ---
 
+## SCHRITT 5b — current-state.adoc fortschreiben (Doc-Kanon)
+
+`docs/current-state.adoc` ist der menschenlesbare Prosa-Stand des Projekts (Kaltstart-Einstieg,
+Ergänzung zur GitHub-State-Machine). Aktualisiere ihn auf Basis der gemergten PRs im Zeitfenster:
+
+- Abschnitt „Stand (zuletzt aktualisiert: …)": Datum auf `$BIS` setzen.
+- „Was ist gebaut": neu gemergte Fähigkeiten grob ergänzen (Blöcke, nicht jedes Issue).
+- „Woran gerade gearbeitet wird": auf das/die aktuell offene(n) Epic(s) aktualisieren.
+- „Offene Entscheidungen": offene `needs-human`-Eskalationen spiegeln.
+- „Bekannte technische Schulden / Risiken": aus Findings/Mustern (Schritt 4) ableiten.
+
+Kurz halten (~1 Bildschirmseite). Abgeschlossenes/Überholtes entfernen — das Dokument
+beschreibt die Gegenwart, kein Changelog. Existiert die Datei noch als Platzhalter, ersetze
+den Platzhalter-Block durch den ersten echten Stand.
+
+---
+
 ## SCHRITT 6 — Retro-Dokument erstellen
 
 ```bash
@@ -172,7 +189,7 @@ if git branch --list "$BRANCH" | grep -q "$BRANCH" || git branch -r | grep -q "o
 fi
 git checkout -b "$BRANCH"
 
-git add "docs/retrospective/${DATUM}-retro.md" docs/GLOSSARY.md
+git add "docs/retrospective/${DATUM}-retro.md" docs/GLOSSARY.md docs/current-state.adoc
 # ADR-Dateien falls erstellt
 git add docs/adr/ 2>/dev/null || true
 
@@ -192,7 +209,7 @@ gh pr create \
 
 ADRs erstellt (alle `adr: yes` seit letztem Retro) · Retro-Dokument vollständig ·
 Preflight-Kalibrierung (Sektion 7) gelaufen und eingetragen · GLOSSARY.md aktualisiert ·
-PR mit `type:retro` + `needs-human` offen · Session beenden.
+current-state.adoc fortgeschrieben · PR mit `type:retro` + `needs-human` offen · Session beenden.
 
 ```
 DONE retro issue:none pr:#<pr-nr> → status:needs-human

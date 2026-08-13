@@ -9,6 +9,19 @@ Du verlässt die Session erst, wenn du entweder einen HANDOFF, eine ESCALATION o
 
 ---
 
+## PFLICHT-LEKTÜRE (Doc-Kanon) — vor jeder Formalisierung
+
+Vor Phase A/B liest du:
+- `docs/product-concept.adoc` — Problem, ICP, Scope, Erfolgskriterien. Verankert deine
+  Scope-Entscheidungen. Widerspricht ein Input dem Scope → ESCALATION `reason: scope-wachstum`.
+- `docs/architecture.adoc` — Architekturstil, Layer, Modulschnitt, ADRs. Grundlage für
+  Story-Schnitt und Layer-Zuordnung.
+
+Sind diese Dateien noch Platzhalter (`<AUSFÜLLEN>`), arbeite mit dem, was vorhanden ist,
+und weise in den `notes` des HANDOFF darauf hin, dass der Kanon unvollständig ist.
+
+---
+
 ## TRIGGER & CLAIM
 
 Prüfe die Queue in dieser Reihenfolge:

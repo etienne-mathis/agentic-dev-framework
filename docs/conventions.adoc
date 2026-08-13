@@ -1,0 +1,76 @@
+= Coding Conventions
+:toc: macro
+:toclevels: 2
+
+// KANON-DOKUMENT (Teil des Framework-Doc-Kanons).
+// Baseline agnostisch gültig. Beim Onboarding projektspezifisch verschärfen.
+// Gelesen vom DEVELOPER (Pflicht vor Implementierung). Vom REVIEWER als Prüfmaßstab genutzt.
+// Zweck: professioneller, projekt-idiomatischer Code — kein generischer "KI-Default"-Code.
+
+toc::[]
+
+== Zweck dieses Dokuments
+
+Dieses Dokument ist der Maßstab gegen generischen, austauschbaren, "nach KI aussehenden"
+Code. Der DEVELOPER liest es vor der Implementierung; der REVIEWER prüft den Diff dagegen.
+Ein Verstoß ist ein Finding (`kategorie: sonstiges` bzw. spezifischer), kein Stilgeschmack.
+
+== 1 — Anti-Generik-Regeln (agnostische Baseline)
+
+Diese Regeln greifen sprachunabhängig und adressieren die typischen Schwächen KI-generierten Codes:
+
+* *Keine überflüssigen Kommentare.* Kommentare erklären das WARUM, nie das WAS. Kein
+  Kommentar, der nur den Code paraphrasiert (`// erhöhe i um 1`). Kein Kommentar-Rauschen.
+* *Keine toten Reste.* Kein auskommentierter Code, keine ungenutzten Variablen/Importe,
+  keine `TODO`/`FIXME` ohne Ticket-Referenz, keine Debug-Ausgaben.
+* *Sprechende, fachliche Namen.* `listUpcomingEvents` statt `getData`/`handler`/`process`.
+  Namen folgen der Ubiquitous Language (siehe `docs/GLOSSARY.md`) — nie Synonyme.
+* *Keine Boilerplate-Verteidigung.* Keine leeren try/catch, kein Abfangen generischer
+  Fehler nur um sie zu verschlucken, keine defensiven Null-Checks ohne echten Fall.
+* *KISS & DRY.* Standardbibliothek vor Eigenbau, keine Copy-Paste-Duplikate, keine
+  spekulative Generik ("könnte man später brauchen").
+* *Konsistenz vor Kreativität.* Ein Muster pro Problemklasse im gesamten Projekt. Wenn das
+  Projekt ein Pattern etabliert hat, wird es weiterverwendet — kein zweiter Weg für dasselbe.
+* *Fehler sind Teil des Designs.* Fehlerfälle explizit behandeln (definierter Fehlerkanal),
+  nicht als Nachgedanke. Mindestens ein Fehlfall gehört in jede nicht-triviale Funktion bedacht.
+
+== 2 — Struktur & Architektur
+
+* Layer-Regeln aus `docs/architecture.adoc` sind bindend (Domain importiert nichts nach außen).
+* Eine Verantwortung pro Einheit (Funktion/Klasse/Modul). Wächst eine Einheit über eine
+  Bildschirmseite hinaus, ist Aufteilung zu prüfen.
+* Öffentliche Schnittstellen sind minimal; interne Details bleiben gekapselt.
+
+== 3 — Tests
+
+* Acceptance-Tests liegen ausschließlich unter `tests/acceptance/story_<nr>/`
+  (feste, sprachunabhängige Konvention, vom `test-contract`-Guard erzwungen).
+* Unit-/Integrationstests der Implementierungsebene tragen die AC-ID im Namen/Docstring.
+* Kein Test wird abgeschwächt, geskippt oder gelöscht, um grün zu werden.
+
+== 4 — Commits & Hygiene
+
+* Commit-Format: `type(scope): imperativ (#issue-nr)` — Typen `feat|fix|refactor|test|docs|chore`.
+* Jedes Repo wird wie ein öffentliches behandelt: keine Secrets/Credentials im Code oder in
+  der History, keine auskommentierten Debug-Reste, aussagekräftige Messages.
+
+== 5 — Projektspezifische Konventionen (Onboarding)
+
+Agnostische Regel: Die Baseline oben gilt immer. Hier wird sie projektspezifisch verschärft
+und konkretisiert — DAS ist der stärkste Hebel gegen generischen Code.
+
+.Sprach-/Stil-Standard
+// onboarding: Formatter/Linter + Regelbasis (z. B. ruff/black, eslint/prettier), Zeilenlänge, Import-Ordnung.
+* <AUSFÜLLEN: verbindlicher Formatter + Linter-Regelsatz>
+
+.Bevorzugte Bibliotheken & Muster
+// onboarding: Welche Libs/Patterns sind gesetzt? (z. B. "HTTP-Client: httpx", "Validierung: pydantic")
+* <AUSFÜLLEN>
+
+.Verbotene Bibliotheken & Anti-Patterns
+// onboarding: Was ist im Projekt ausdrücklich unerwünscht? (z. B. bestimmte Lib, globaler State, ORM-Lazy-Loading)
+* <AUSFÜLLEN>
+
+.Namens- & Fehlerkonventionen
+// onboarding: Projektspezifische Namensschemata, Logging-Modul, Error-Typen.
+* <AUSFÜLLEN>

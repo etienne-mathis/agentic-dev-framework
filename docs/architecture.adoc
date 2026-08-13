@@ -1,0 +1,89 @@
+= Architecture
+:toc: macro
+:toclevels: 2
+
+// KANON-DOKUMENT (Teil des Framework-Doc-Kanons).
+// Baseline agnostisch gültig. Beim Onboarding projektspezifisch ausfüllen.
+// Gelesen vom ARCHITECT (Story-Schnitt, Layer-Zuordnung) und DEVELOPER (Umsetzung).
+// ADRs werden hier fortgeschrieben (RETRO bei DECISION mit adr: yes, DEVELOPER bei relevanten Änderungen).
+
+toc::[]
+
+== Zweck dieses Dokuments
+
+Verbindliche Quelle für das WIE auf Systemebene: Architekturstil, Layer-Regeln,
+Modulschnitt, Datenmodell und die Historie der Architekturentscheidungen (ADRs).
+Der ARCHITECT nutzt es für Story-Schnitt und Layer-Zuordnung, der DEVELOPER für die
+Umsetzung. Bei Widerspruch zwischen Code und diesem Dokument gilt: erst hier klären
+(ADR), dann bauen.
+
+== 1 — Architekturstil (agnostische Baseline)
+
+Das Framework setzt eine *hexagonale / Ports-and-Adapters*-Schichtung voraus. Vier Layer,
+mit strikter Abhängigkeitsrichtung (nach innen):
+
+[cols="1,3,2",options="header"]
+|===
+| Layer | Verantwortung | Darf NICHT
+| Presentation | UI, Controller, DTOs, Eingangsvalidierung | Fachlogik, direkter DB-Zugriff
+| Application | Use Cases, Ablaufkoordination | direkte Queries, UI-Belange
+| Domain | Entitäten, Value Objects, Fachregeln, Ports (Interfaces) | technische Abhängigkeiten (DB, HTTP, Framework)
+| Infrastructure | Adapter für DB, externe APIs, Queues (implementiert Domain-Ports) | Fachregeln
+|===
+
+Kernregel (sprachunabhängig, CI-erzwingbar via import-linter / dependency-cruiser):
+*Domain importiert nichts aus Application, Presentation oder Infrastructure.* Abhängigkeiten
+zeigen ausschließlich nach innen. Externe Systeme werden über Ports (in Domain) und Adapter
+(in Infrastructure) angebunden.
+
+// onboarding: Reale Verzeichnisse aus CLAUDE.md layer_mapping hier spiegeln, falls sie vom Default abweichen.
+Die konkreten Verzeichnisse stehen in `CLAUDE.md` unter `layer_mapping`.
+
+== 2 — Tech-Stack
+
+// onboarding: Konkreten Stack eintragen (Sprache, Framework, DB, Runtime, Deploy-Ziel). Muss zu CLAUDE.md `stack` passen.
+<AUSFÜLLEN: Sprache/Framework/DB/Runtime/Deployment>
+
+== 3 — Module (Bounded Contexts)
+
+Agnostische Regel: Module sind fachlich geschnitten, nicht technisch. Ein Modul kapselt
+einen Bounded Context mit eigener Ubiquitous Language (siehe GLOSSARY.md). Der ARCHITECT
+schneidet Stories primär entlang Modulgrenzen.
+
+// onboarding: Module auflisten; muss zu CLAUDE.md `module` passen.
+* <AUSFÜLLEN: Modulname — Verantwortung>
+
+== 4 — Datenmodell
+
+// onboarding: Kern-Entitäten und ihre Beziehungen (kanonisch, keine Duplikate). Bei größeren Modellen auf ein separates Diagramm verlinken.
+<AUSFÜLLEN: zentrale Entitäten + Beziehungen>
+
+== 5 — Übergreifende Vorgaben (agnostische Baseline)
+
+* Observability: einmalige Middleware für Request-Log/Latency/Error (siehe CLAUDE.md
+  `observability`); danach nur noch domänenspezifische Events.
+* Fehlerbehandlung: Fehler werden über den definierten Fehlerkanal geführt, nicht verschluckt.
+* API-Verträge: bei gesetztem `api_contract` (CLAUDE.md) sind Breaking Changes nur mit
+  `human-override:api-breaking` zulässig.
+// onboarding: projektspezifische Querschnittsvorgaben ergänzen (z. B. Auth-Modell, Mandantenfähigkeit).
+
+== 6 — Architecture Decision Records (ADRs)
+
+Agnostische Regel: Jede nicht-triviale Entscheidung zu Stack, Architektur oder externen
+Abhängigkeiten wird als ADR festgehalten — append-only, nie löschen, nur durch neue ADRs
+ablösen (Status `superseded`). So bleibt der Entscheidungskontext für Kaltstarts erhalten.
+
+ADR-Format (pro Eintrag):
+
+[example]
+====
+*ADR-<nr>: <Titel>* +
+Status: proposed | accepted | superseded (durch ADR-<nr>) +
+Kontext: <Warum stand die Entscheidung an?> +
+Entscheidung: <Was wurde entschieden?> +
+Alternativen: <Was wurde verworfen und warum?> +
+Konsequenzen: <Welche Folgen, auch negative?>
+====
+
+// onboarding: erste ADRs beim Aufsetzen des Projekts eintragen (z. B. ADR-1: Wahl des Stacks).
+_Noch keine ADRs — beim ersten Architektur-Entscheid befüllen._
