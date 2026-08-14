@@ -104,12 +104,14 @@ Alle Gates grün → weiter mit inhaltlicher Prüfung.
 ### Fast-Lane (Label `track:fast`) — reduzierte, dokumentierte Tiefe
 
 ```bash
-FAST=$(gh pr view <nr> --json labels --jq '[.labels[].name] | index("track:fast") != null')
+# track:fast lebt auf der STORY (dort setzt es der ARCHITECT), nicht am PR.
+# STORY_NR wurde oben unter PFLICHT-INPUTS bereits aus dem PR-Body abgeleitet.
+FAST=$(gh issue view "$STORY_NR" --json labels --jq '[.labels[].name] | index("track:fast") != null')
 ```
 
-Ist `track:fast` gesetzt (vom ARCHITECT für triviale Items: Preflight-Score ≤ 2, Einzeldatei,
-keine neue Dependency, kein Schema/Migration, kein Auth/PII-Bezug), fährst du eine bewusst
-verkürzte Prüfung — **Rollen und Isolation bleiben unangetastet, nur die Tiefe skaliert mit dem Risiko:**
+Ist `track:fast` an der Story gesetzt (vom ARCHITECT für qualitativ triviale Items: einzelne
+Implementierungsdatei, keine neue Dependency, kein Schema/Migration, kein Auth/PII-Bezug),
+fährst du eine bewusst verkürzte Prüfung — **Rollen und Isolation bleiben unangetastet, nur die Tiefe skaliert mit dem Risiko:**
 
 - **Immer:** Prüfpunkt 1 (Contract-Qualität), 2 (AC-Interpretation), 7 (conventions/Anti-Generik).
 - **Konditional:** Prüfpunkt 5 (Observability) und 6 (Performance) NUR, wenn der Diff Endpoints,

@@ -130,18 +130,24 @@ section() {
 # ═══════════════════════════════════════════════════════════════════════════
 # 2 — METADATEN-SIGNALE MESSEN
 # ═══════════════════════════════════════════════════════════════════════════
-AC_COUNT=$(section "Acceptance Criteria" | grep -cE '^\s*-\s' || true)
+# AC-Sektion: dt. (Akzeptanzkriterien) ODER engl. (Acceptance Criteria).
+# Zählt Aufzählungs-ACs ("- ...") UND Fettschrift-ACs ("**AC-1:** ...").
+AC_COUNT=$( { section "Akzeptanzkriterien"; section "Acceptance Criteria"; } \
+  | grep -icE '^[[:space:]]*(-[[:space:]]|\*\*ac-?[0-9])' || true)
 TASK_COUNT=$(section "Tasks" | grep -cE '^\s*-\s' || true)
 
 # Neue Dateien: Tasks-Zeilen mit Erstell-Verben
 NEW_FILES=$(section "Tasks" \
   | grep -icE '(erstellen|erstelle|anlegen|erzeugen|create|new file|hinzufügen)' || true)
 
-# Module: distinkte Top-Level-Verzeichnisse in Backtick-Pfaden im ganzen Body
+# Module: distinkte Top-Level-Verzeichnisse in Backtick-Pfaden im ganzen Body.
+# Test-/Spec-Verzeichnisse sind keine Bounded Contexts → ausschließen (sonst
+# hebt schon die zwingende Test-/Contract-Datei den Score fälschlich an).
 MODULES=$(grep -oE '`[a-zA-Z0-9_./-]+`' "$TMP" \
   | tr -d '`' \
   | grep -E '/' \
   | sed -E 's|^([a-zA-Z0-9_-]+)/.*|\1|' \
+  | grep -viE '^(tests?|__tests__|specs?|__mocks__|docs?)$' \
   | sort -u | grep -vc '^$' || true)
 [ "$MODULES" -lt 1 ] && MODULES=1
 

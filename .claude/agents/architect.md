@@ -232,13 +232,19 @@ in die anzulegende Story als Zeile `preflight-modell: <tier>` unter den Tasks ei
 die DEVELOPER-Session das passende Modell wählen kann.
 
 **Fast-Lane markieren (Label `track:fast`) — Overhead-Reduktion für triviale Items:**
-Setze `track:fast` an einer Story NUR, wenn **alle** Kriterien erfüllt sind:
+Setze `track:fast` an einer Story NUR, wenn **alle** qualitativen Kriterien erfüllt sind:
 
-- Preflight-Score ≤ 2 (Tier Haiku), UND
-- der Diff betrifft voraussichtlich **eine einzige Datei**, UND
+- der Diff berührt **eine einzige Produktions-/Implementierungsdatei** (Test- und
+  Acceptance-Contract-Dateien zählen NICHT mit — jede Story erzeugt zwingend zusätzlich
+  mindestens eine Test-/Contract-Datei), UND
 - **keine neue Dependency** eingeführt wird, UND
 - **kein Schema/keine Migration**, UND
 - **kein Auth-/PII-Bezug** (kein `pii_patterns`-Feld berührt, keine Authentifizierung/Autorisierung).
+
+Bewusst **nicht** an den Preflight-Roh-Score gekoppelt: weil jede contractete Story neben der
+Implementierung mindestens eine Test-/Contract-Datei erzeugt, liegt der Roh-Score praktisch
+immer bei ≥ 3 — ein Score-Gate (`≤ 2`) würde nie auslösen. Maßgeblich ist die qualitative
+Trivialität oben. Der Modell-Tier (Haiku) läuft orthogonal über `preflight-modell:`.
 
 ```bash
 gh issue edit <story-nr> --add-label "track:fast"

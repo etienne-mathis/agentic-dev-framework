@@ -32,6 +32,24 @@ RC=0; OUT=$(cd "$WORK" && bash "$SCRIPTS/preflight.sh" \
   --source-dir "$GOLDEN/python" --budget 1) || RC=$?
 assert_eq 20 "$RC" "Budget=1 → NO-GO (exit 20)"
 
+# ── AC-Parser: dt. Header + Fettschrift-ACs (Regression P3.2-A) ──────────────
+# Vor dem Fix zählte der Parser nur engl. "Acceptance Criteria" + Aufzählungs-ACs;
+# ein deutscher Story-Body mit "**AC-1:**"-Fettschrift ergab AC:0.
+ACBODY="$WORK/ac.md"
+printf '## Akzeptanzkriterien\n\n**AC-1:** a\n**AC-2:** b\n**AC-3:** c\n**AC-4:** d\n**AC-5:** e\n\n## Tasks\n\n- `src/utils/x.js` anlegen\n' > "$ACBODY"
+RC=0; OUT=$(cd "$WORK" && bash "$SCRIPTS/preflight.sh" \
+  --body-file "$ACBODY" --title "MwSt-Helper" --source-dir "$GOLDEN/node") || RC=$?
+assert_contains "$OUT" "AC:5" "AC-Parser zählt dt. Header + Fettschrift-ACs (5)"
+
+# ── MODULES: Test-/Docs-Verzeichnisse sind keine Module (Regression P3.2-A) ───
+# Vor dem Fix hob schon die zwingende Test-/Contract-Datei (tests/…) den Modul-
+# Zähler und damit den Score fälschlich an.
+MODBODY="$WORK/mod.md"
+printf '## Scope\n\n- `src/utils/x.js`\n- `tests/acceptance/story_1/x.test.js`\n- `docs/architecture.adoc`\n\n## Tasks\n\n- `src/utils/x.js` anlegen\n' > "$MODBODY"
+RC=0; OUT=$(cd "$WORK" && bash "$SCRIPTS/preflight.sh" \
+  --body-file "$MODBODY" --title "MwSt-Helper" --source-dir "$GOLDEN/node") || RC=$?
+assert_contains "$OUT" "Module:1" "MODULES schließt tests/ und docs/ aus (nur src → 1)"
+
 # preflight-dedup ohne Entwurf → sauberer Skip (exit 0, kein Netz).
 RC=0; OUT=$(bash "$SCRIPTS/preflight-dedup.sh" 2>&1) || RC=$?
 assert_eq 0 "$RC" "preflight-dedup ohne --title/--body-file → Skip (exit 0)"
