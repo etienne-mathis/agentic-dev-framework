@@ -1,7 +1,9 @@
 # Head-to-Head-Ergebnisse (P3.4). Tab-getrennt. '#'-Zeilen werden ignoriert.
 # Eine Zeile je (Task × Arm). Arm A = volle Pipeline, Arm B = Single-AI.
-# Tokens für Arm A: Summe aller Rollen-Spawns des Tasks aus .preflight/actuals.tsv
-# (measure-run.sh). Für Arm B: measure-run.sh über das eine Session-Fenster.
+# Tokens: einheitlich über die direkt gemeldeten subagent_tokens je Rolle/Session
+# (Orchestrierungs-Modell; measure-run.sh per Repo-Slug isoliert hier nicht — siehe
+# Fast-Lane-Lauf 2026-08-14). Arm A = Summe aller Rollen-Spawns; Arm B = 1 Session.
+# Aggregat steht in in_tokens (out_tokens/cache_read = 0), da kein in/out-Split verfügbar.
 #
 # Spalten:
 # task_id  arm  komplexitaet  in_tokens  out_tokens  cache_read  wall_clock_s  zyklen  menschl_eingriffe  findings  escaped_defects  ci_gruen  coverage_pct  konvention_ok  notiz
@@ -12,3 +14,7 @@
 # escaped_defects = Contract-/Gate-Fehler NACH "fertig" (der eigentliche Qualitätsmesswert)
 #
 # --- Daten ab hier (aktuell leer: Doppel-Lauf noch nicht durchgeführt) ---
+T1	A	trivial	163879	0	0	550	1	1	0	0	ja	100	ja	Arm A voll (4 Rollen); +1 unmeasured Dev-Abbruch (Session-Limit)
+T1	B	trivial	18920	0	0	27	0	0	0	0	ja	100	ja	Single-AI Haiku; frozen Contract 8/8; Lint sauber
+T2	A	trivial	115879	0	0	517	1	1	0	0	ja	100	ja	Arm A Fast-Lane (reduzierte Reviewer-Tiefe); CSO-Tokens unmeasured (Limit)
+T2	B	trivial	17177	0	0	14	0	0	0	0	ja	100	ja	Single-AI Haiku; frozen Contract 3/3; Lint sauber
