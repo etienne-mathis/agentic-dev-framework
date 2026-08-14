@@ -62,23 +62,33 @@ jobs:
 
             LABELS=$(gh pr view "$PR" --json labels --jq '.labels[].name' || true)
 
-            # Required-Checks-Rollup → success | failure | pending
-            # (der auto-merge-Check selbst wird ausgeklammert, sonst Self-Deadlock).
-            # Fehlerresilient: schlägt der API-Call fehl, gilt "pending" (kein Merge).
-            CHECKS=$(gh pr view "$PR" --json statusCheckRollup --jq '
-              [ .statusCheckRollup[]
-                | select( ((.name // .context // "") | ascii_downcase | contains("auto-merge")) | not )
-                | (.conclusion // .state // "PENDING") | ascii_upcase ] as $c
-              | if ($c | length) == 0 then "pending"
-                elif ($c | map(select(. == "FAILURE" or . == "CANCELLED" or . == "TIMED_OUT"
-                       or . == "ACTION_REQUIRED" or . == "ERROR" or . == "STARTUP_FAILURE")) | length) > 0 then "failure"
-                elif ($c | map(select(. == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED")) | length) == ($c | length) then "success"
-                else "pending" end' 2>/dev/null || echo "pending")
-            echo "checks=$CHECKS"
+            # Rollup-Query (der auto-merge-Check selbst wird ausgeklammert, sonst Self-Deadlock).
+            ROLLUP_JQ='[ .statusCheckRollup[] | select( ((.name // .context // "") | ascii_downcase | contains("auto-merge")) | not ) | (.conclusion // .state // "PENDING") | ascii_upcase ] as $c | if ($c|length)==0 then "pending" elif ($c|map(select(.=="FAILURE" or .=="CANCELLED" or .=="TIMED_OUT" or .=="ACTION_REQUIRED" or .=="ERROR" or .=="STARTUP_FAILURE"))|length)>0 then "failure" elif ($c|map(select(.=="SUCCESS" or .=="NEUTRAL" or .=="SKIPPED"))|length)==($c|length) then "success" else "pending" end'
 
-            # 3 — Gate entscheiden (getestete Logik). Der Gate signalisiert HOLD mit
-            # Exit 10 — unter GitHub Actions (-e) darf das den Step NICHT abbrechen,
-            # daher '|| GRC=$?' (fängt den Nicht-Null-Exit, ohne -e auszulösen).
+            # Probe: erfüllen Labels + Autonomie ALLE Bedingungen (unter Annahme grüner Checks)?
+            # Wenn nicht (kein approved / Blocker-Label / supervised), sofort raus — kein Warten.
+            # Der Gate signalisiert HOLD mit Exit 10; unter Actions' -e fängt '|| PROBE=$?' das ab.
+            PROBE=0
+            printf '%s\n' "$LABELS" \
+              | bash scripts/ci/auto-merge-gate.sh --autonomy "$AUTONOMY" --checks success >/dev/null 2>&1 || PROBE=$?
+            if [ "$PROBE" -ne 0 ]; then
+              printf '%s\n' "$LABELS" | bash scripts/ci/auto-merge-gate.sh --autonomy "$AUTONOMY" --checks success || true
+              echo "Label-/Autonomie-Bedingung nicht erfüllt — kein Merge für #$PR."
+              continue
+            fi
+
+            # Alle Bedingungen außer Checks erfüllt → auf Settlement der Required Checks WARTEN.
+            # Label-Events triggern die Guards neu; sie laufen kurz parallel und sind dann
+            # transient "pending". Ein einmaliges Auslesen würde race'n — daher bounded Poll.
+            CHECKS=pending
+            for a in $(seq 1 20); do
+              CHECKS=$(gh pr view "$PR" --json statusCheckRollup --jq "$ROLLUP_JQ" 2>/dev/null || echo pending)
+              echo "  checks-attempt $a: $CHECKS"
+              [ "$CHECKS" != "pending" ] && break
+              sleep 15
+            done
+
+            # 4 — finales Gate mit dem gesettelten Checks-Status.
             GRC=0
             GATE=$(printf '%s\n' "$LABELS" \
               | bash scripts/ci/auto-merge-gate.sh --autonomy "$AUTONOMY" --checks "$CHECKS") || GRC=$?
