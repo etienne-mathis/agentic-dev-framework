@@ -64,6 +64,25 @@ Repo-Slug isoliert hier nicht). Fairness-Regeln siehe `README.md`.
 > fangen. Erst dann kippt die Kosten/Nutzen-Rechnung. Bis dahin gilt: **die Effizienz-Behauptung
 > ist für triviale Tasks widerlegt** (Single-AI schlägt das Framework klar).
 
+### Entscheidung (aus der trivialen Stufe abgeleitet, 2026-08-14)
+
+**Für triviale Tasks: Zeremonie weg, Schiedsrichter behalten.** Ableitung aus dem 7,75×-Ergebnis bei
+identischer Qualität — aber präzisiert, nicht „einfach Single-AI ohne Netz":
+
+- Kandidat für eine **„Solo-Lane"** unterhalb der Fast-Lane: Tasks, die die qualitativen
+  Trivialitäts-Kriterien erfüllen (einzelne Impl-Datei / keine Dep / kein Schema / kein Auth-PII),
+  werden von **einer Single-AI** implementiert — **aber weiterhin durch das Acceptance-Contract + die
+  CI-Gates validiert**. Das Teure (4-Rollen-Zeremonie, Merge-Zyklen) entfällt; das Wertvolle (der
+  Referee als Defekt-Netz) bleibt und kostet fast nichts.
+- Begründung: Die reale Gefahr ist **Fehl-Triage** (ein „trivial" eingestufter Task ist es doch nicht).
+  Contract + CI fangen genau diesen Fall ab — ohne sie wäre die Solo-Lane eine blinde Wette. Der
+  ARCHITECT hat mit den Fast-Lane-Kriterien bereits ein passendes Triage-Gate.
+- Abgrenzung zur Fast-Lane: Fast-Lane reduziert nur die REVIEWER-Tiefe, läuft aber weiter durch alle
+  Rollen. Die Solo-Lane ist radikaler (kein Multi-Rollen-Durchlauf, kein Merge-Ritual).
+- **Umsetzung bewusst zurückgestellt** bis nach der mittel/komplex-Stufe: Falls sich zeigt, dass der
+  Referee ohne die Rollen (REVIEWER/CSO) reale Defekte durchlässt, ändert das den Zuschnitt der
+  Solo-Lane. Erst mit den vollständigen Daten wird die Lane spezifiziert und implementiert.
+
 ## Threats to Validity
 
 - Kleine Stichprobe (7 Tasks, ein Repo, ein Stack). Keine statistische Signifikanz, nur Indikation.
