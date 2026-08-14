@@ -10,59 +10,78 @@ Story den Acceptance-Contract **genau einmal** — dieser Contract + die CI-Gate
 Die ACs unten sind Seed-Vorgaben; der ARCHITECT verfeinert sie zu INVEST-Stories. Namen folgen
 `docs/GLOSSARY.md` von G13 (z. B. `cartTotal`, Cent-Constraint für Beträge).
 
+> **Baseline-Verifikation (2026-08-14).** Das ursprüngliche Task-Set war gegen einen
+> idealisierten leeren Shop geschrieben. Der reale G13-Stand implementiert bereits
+> Euro-Formatierung (`formatPrice`), Warenkorb-Badge (`totalItems`) und Mengenänderung
+> (`updateCartQty`). Diese Tasks wurden durch **genuin fehlende** G13-Lücken ersetzt, damit
+> beide Arme aus derselben sauberen Baseline bauen (Fairness-Regel). Jede Lücke unten ist
+> gegen den G13-Code verifiziert.
+
 ---
 
-## T1 — Euro-Formatierung (trivial)
+## T1 — Gesamtbetrag inkl. MwSt, Cent-genau (trivial)
 
-Einheitlicher Helper `formatEuro(cents)` → String wie `"12,90 €"`.
-- AC-1: `formatEuro(1290)` liefert `"12,90 €"`.
-- AC-2: `formatEuro(0)` liefert `"0,00 €"`.
-- AC-3: negative Cent-Werte liefern ein führendes `-` (`formatEuro(-500)` → `"-5,00 €"`).
-Einzeldatei-Utility, keine neue Dependency → **Fast-Lane-Kandidat** (`track:fast`).
+Reine Funktion `berechneGesamtMitMwSt(zwischensummeCents, mwstSatz)` → Gesamtbetrag in Cent
+als Ganzzahl (kaufmännisch gerundet). Behebt eine reale Lücke: `App.vue` zeigt aktuell
+`totalWithVat = cartTotal.value` — die MwSt wird ignoriert; zudem ist `vatAmount = cartTotal * 0.07`
+ein Float im Cent-Raum (Cent-Constraint-Verletzung).
+- AC-1: `berechneGesamtMitMwSt(10000, 0.07)` liefert `10700` (Ganzzahl Cent).
+- AC-2: kaufmännische Rundung auf Cent: `berechneGesamtMitMwSt(999, 0.07)` liefert `1069`
+  (999 × 1,07 = 1068,93 → 1069), Ergebnis ist immer `Number.isInteger`.
+- AC-3: `berechneGesamtMitMwSt(0, 0.07)` liefert `0`.
+Einzeldatei-Utility unter `src/utils/`, keine neue Dependency, kein Auth/PII, kein Schema
+→ **Fast-Lane-Kandidat** (`track:fast`).
 
-## T2 — Warenkorb-Badge Artikelanzahl (trivial)
+## T2 — Warenkorb-Mengen-Label (trivial)
 
-Computed `cartItemCount` = Summe der Mengen; Badge im Header.
-- AC-1: leerer Warenkorb → Badge zeigt `0` (oder ist ausgeblendet, je Konvention).
-- AC-2: zwei Positionen mit Menge 2 und 3 → Badge zeigt `5`.
-- AC-3: Mengenänderung aktualisiert das Badge reaktiv.
-**Fast-Lane-Kandidat**.
+Reine Funktion `formatWarenkorbLabel(anzahl)` für eine sprachlich korrekte Anzeige.
+- AC-1: `formatWarenkorbLabel(0)` liefert `"Warenkorb leer"`.
+- AC-2: `formatWarenkorbLabel(1)` liefert `"1 Artikel"`.
+- AC-3: `formatWarenkorbLabel(5)` liefert `"5 Artikel"`.
+Einzeldatei-Utility, keine neue Dependency → **Fast-Lane-Kandidat**. (G13 hat `totalItems`,
+aber keine sprachlich aufbereitete Label-Funktion.)
 
-## T3 — Menge im Warenkorb ändern (mittel)
+## T3 — Warenkorb-Persistenz über Reload (mittel)
 
-Increment/Decrement je Position mit Min/Max und Persistenz.
-- AC-1: Decrement unter 1 entfernt die Position nicht automatisch, bleibt bei 1 (oder klar definiert).
-- AC-2: Increment über verfügbaren Bestand wird auf den Bestand begrenzt.
-- AC-3: `cartTotal` wird Cent-genau neu berechnet.
-- AC-4: Zustand überlebt einen Reload (Persistenz).
+Der Warenkorb liegt als In-Memory-Singleton (`const cart = ref([])` in `useCart.js`) und geht
+bei jedem Reload verloren. Persistenz über `localStorage`, ohne die bestehende API zu brechen.
+- AC-1: Nach Hinzufügen von Positionen und einem Reload ist der Warenkorb identisch wiederhergestellt.
+- AC-2: Mengenänderung und Entfernen werden persistiert.
+- AC-3: Leerer/kaputter `localStorage`-Zustand führt nicht zum Fehler (definierter Fallback auf leer).
+- AC-4: Bestehende `useCart`-Rückgabe (`cart`, `addToCart`, …) bleibt unverändert nutzbar.
 
 ## T4 — Gutschein-Code (mittel)
 
-Prozentualer Rabatt auf `cartTotal`, Cent-genau, mit Validierung.
+Prozentualer Rabatt auf `cartTotal`, Cent-genau, mit Validierung. In G13 nicht vorhanden
+(nur Stripe-Vendor-Code, keine eigene Rabattlogik).
 - AC-1: gültiger Code `SAVE10` reduziert um 10 % (kaufmännisch gerundet auf Cent).
 - AC-2: ungültiger Code → Fehlermeldung, `cartTotal` unverändert.
 - AC-3: Rabatt nie negativer Endbetrag; Grenzfall 100 % → `0,00 €`.
 - AC-4: nur ein aktiver Gutschein gleichzeitig.
 
-## T5 — Produktfilter nach Kategorie (mittel)
+## T5 — Produktfilter nach Kategorie mit Deeplink (mittel)
 
-Filter über Query-Param, inkl. Leer-Ergebnis-Zustand.
+G13 hat eine Titel-Suche (`filteredProducts`), aber **keinen** Kategorie-Filter und **kein**
+Query-Param-Deeplinking. Beides ergänzen, inkl. Leer-Ergebnis-Zustand.
 - AC-1: Auswahl einer Kategorie zeigt nur deren Produkte.
 - AC-2: Kategorie ohne Produkte → definierter Leer-Zustand (kein Fehler).
 - AC-3: Query-Param spiegelt die Auswahl (deep-linkbar, überlebt Reload).
 
-## T6 — Checkout-Flow mit Bestell-Endpoint (komplex)
+## T6 — Eigener Bestell-Endpoint mit Idempotenz (komplex)
 
 Frontend-Flow + PHP-API-Endpoint `POST /orders`, Validierung, Fehlerpfade, Idempotenz.
+Distinkt vom bestehenden Stripe-`checkout.php` (das ist ein Redirect-Flow, kein serverseitig
+persistierter, idempotenter Bestell-Endpoint).
 - AC-1: gültige Bestellung → 201 + Order-ID; Warenkorb wird geleert.
 - AC-2: leerer Warenkorb → 422, keine Order angelegt.
-- AC-3: doppeltes Submit mit gleicher Idempotency-Key legt **keine** zweite Order an.
+- AC-3: doppeltes Submit mit gleichem Idempotency-Key legt **keine** zweite Order an.
 - AC-4: Server-Fehler (5xx) → Warenkorb bleibt erhalten, klare Nutzer-Fehlermeldung.
 - AC-5: Beträge serverseitig neu berechnet (Client-Beträge nicht vertraut).
 
 ## T7 — Lagerbestand-Reservierung / Überverkauf verhindern (komplex)
 
-Nebenläufige Bestellungen dürfen den Bestand nicht unter 0 treiben.
+Nebenläufige Bestellungen dürfen den Bestand nicht unter 0 treiben. G13 hat nur simple
+Stock-Checks im Warenkorb (`product.stock <= 0`), keine Nebenläufigkeitssicherung.
 - AC-1: zwei parallele Bestellungen auf das letzte Stück → genau eine erfolgreich, eine abgelehnt.
 - AC-2: abgelehnte Bestellung gibt reservierte Menge frei.
 - AC-3: Bestand nie negativ (Invariante, auch unter Last).
@@ -74,6 +93,6 @@ Nebenläufige Bestellungen dürfen den Bestand nicht unter 0 treiben.
 
 | Komplexität | Tasks |
 |---|---|
-| trivial | T1, T2 |
-| mittel  | T3, T4, T5 |
-| komplex | T6, T7 |
+| trivial | T1 (Gesamt inkl. MwSt), T2 (Mengen-Label) |
+| mittel  | T3 (Persistenz), T4 (Gutschein), T5 (Kategorie-Filter) |
+| komplex | T6 (Bestell-Endpoint), T7 (Reservierung) |
