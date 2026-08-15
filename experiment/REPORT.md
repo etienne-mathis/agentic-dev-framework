@@ -1,7 +1,8 @@
 # Head-to-Head-Report: Framework vs. Single-AI (P3.4)
 
-> Status: **In Arbeit** — triviale Stufe (T1, T2) erfasst und ausgewertet. Mittel (T3–T5) und
-> komplex (T6, T7) stehen aus. Tabellen aus `bash experiment/collect.sh`.
+> Status: **In Arbeit** — triviale Stufe (T1, T2) vollständig; mittlere Stufe (T3) qualitativ
+> charakterisiert (Arm A cycle-heavy, nicht bis Merge gegrindet). T4–T7 offen. Tabellen aus
+> `bash experiment/collect.sh`.
 
 Datum des Laufs: 2026-08-14 · Repo: G13 · Framework-Stand: nach Phase 0–3 + Fast-Lane-Fix (gehärtet)
 · Modell-Familie: Claude (Arm A gemischte Tiers via `preflight-modell`; Arm B = Haiku, spiegelt die
@@ -82,6 +83,41 @@ identischer Qualität — aber präzisiert, nicht „einfach Single-AI ohne Netz
 - **Umsetzung bewusst zurückgestellt** bis nach der mittel/komplex-Stufe: Falls sich zeigt, dass der
   Referee ohne die Rollen (REVIEWER/CSO) reale Defekte durchlässt, ändert das den Zuschnitt der
   Solo-Lane. Erst mit den vollständigen Daten wird die Lane spezifiziert und implementiert.
+
+## Mittlere Stufe (T3, Warenkorb-Persistenz) — qualitativer Zwischenbefund
+
+T3 wurde durch Arm A gefahren, aber bewusst **nicht bis zum Merge gegrindet** — der Verlauf selbst ist
+der Befund. Arm A verbrauchte für einen einzigen mittleren Task: ARCHITECT + DEVELOPER (v1) + REVIEWER
+(c1) + DEVELOPER (v2) + REVIEWER (c2) + … (bei Cycle 3 gestoppt), plus mehrere Operator-Eingriffe.
+
+**Wo das Framework gewinnt (belegt):**
+- **CI fing eine echte Regression:** eine hinzugefügte `vitest.config.js` verdrängte die `vite.config.js`
+  und brach den `@`-Alias → alle bestehenden Tests rot. Lokal „grün", in CI rot. Single-AI hätte das
+  (ohne CI-Gate) verschifft.
+- **REVIEWER fing reale Defekte jenseits des Contracts:** (c1) der Corrupt-State-Fallback wurde vom
+  Acceptance-Test gar nicht am echten Init-Pfad geprüft; Test-Isolation fehlte. Der frozen Contract
+  allein (Arm-B-Netz) hätte das durchgewunken — der Contract testete den Fallback nur scheinbar.
+
+**Wo das Framework verliert / fragil ist (belegt):**
+- **Cycle-Explosion:** Der REVIEWER findet in jedem Cycle progressiv kleinere Issues (high → medium →
+  low) und treibt so immer neue Runden. Bei Cycle 3 sank die Severity auf „low unused var" / „medium
+  Test-Konsistenz" — jeder Cycle kostet einen Developer- + Reviewer-Spawn. Das ist die „wiederkehrende
+  Cycles / Human-Bottleneck"-Schwäche in Reinform.
+- **Operative Fragilität mit schwachem Modell (Haiku):** Der DEVELOPER produzierte **dreimal**
+  commitlint-ungültige Commit-Messages (2× Großbuchstaben-Scope `useCart`, 1× fehlende `(#34)`-Referenz).
+  Jeder Fehler ist ein **harter Deadlock** (Fix erfordert History-Rewrite, für Agenten verboten) → nur per
+  Operator lösbar. Framework-Issue #13.
+- **Label-Objekt-Verwirrung:** `human-override:test-contract` musste auf **Story UND PR** gesetzt werden
+  (der contract-Guard prüft die PR-Labels) — dieselbe Story-vs-PR-Klasse wie der Fast-Lane-Bug P3.2-B.
+
+**Fazit mittlere Stufe (vorläufig):** Das Framework fängt bei mittlerer Komplexität reale Defekte, die
+Single-AI (nur Contract+CI) durchließe — der Contract allein ist ein **schwächeres Netz** als Contract +
+REVIEWER/CSO. ABER: der Preis ist hoch und teils irrational (Cycle-Explosion auf Low-Severity-Nitpicks,
+wiederkehrende Commit-Deadlocks mit schwachem Modell). Für einen produktionskritischen Kontext kann die
+Gründlichkeit den Preis wert sein; für alltägliche mittlere Tasks droht das Framework in Nebensächlichkeiten
+zu ersticken. **Konkreter Verbesserungsbedarf:** (a) Cycle-Cap / Severity-Schwelle (Low-Findings dürfen den
+Merge nicht blocken), (b) Commit-Deadlock beheben (#13), (c) stärkeres Modell-Tier für mittlere Tasks statt
+Haiku (der Preflight unterschätzt In-Place-Modifikationen und empfahl fälschlich Haiku).
 
 ## Threats to Validity
 
