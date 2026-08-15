@@ -22,10 +22,15 @@
 ###############################################################################
 set -euo pipefail
 
-PATTERN='^(feat|fix|refactor|test|docs|chore)(\([a-z0-9_-]+\))?: .{1,100} \(#[0-9]+\)$'
+# Scope case-insensitiv ([A-Za-z0-9_-]): akzeptiert z. B. `useCart` neben `usecart`.
+# Grund (Live-Befund T3, Issue #13): ein lowercase-only-Scope-Pattern verwandelte
+# jeden Großbuchstaben-Scope in einen harten Deadlock (Fix nur per History-Rewrite,
+# der Agenten verboten ist). Die Konvention „lowercase bevorzugt" bleibt eine
+# Empfehlung im Prompt, blockt aber nicht mehr den Merge.
+PATTERN='^(feat|fix|refactor|test|docs|chore)(\([A-Za-z0-9_-]+\))?: .{1,100} \(#[0-9]+\)$'
 # Acceptance-Contract-Commits folgen einer eigenen, vom test-contract-Guard
 # erzwungenen Konvention und sind hier ausdrücklich zulässig:
-CONTRACT='^test(\([a-z0-9_-]+\))?: (add|revise) acceptance contract for #[0-9]+( \[AC-.*\])?$'
+CONTRACT='^test(\([A-Za-z0-9_-]+\))?: (add|revise) acceptance contract for #[0-9]+( \[AC-.*\])?$'
 
 MODE="stdin"; RANGE=""; SINGLE=""
 while [ $# -gt 0 ]; do

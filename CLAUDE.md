@@ -15,7 +15,8 @@ Die Rolle steht in deinem Startauftrag. Führe niemals Arbeit einer anderen Roll
 - ESCALATION-reason ausschließlich als Slug aus der Tabelle in docs/PROTOCOL.md §3.
 - Beende jede Session mit genau einer Signal-Zeile nach docs/PROTOCOL.md §5.
 - Absolut verboten für jede Rolle:
-  `gh pr merge` · `gh pr review --approve` · Force-Push · History-Rewrite ·
+  `gh pr merge` · `gh pr review --approve` ·
+  Force-Push / History-Rewrite auf `main`, geteilter Historie oder nach dem Merge ·
   Tests löschen, skippen oder abschwächen ·
   Änderungen an `.github/`, `.claude/`, `CLAUDE.md`, `docs/PROTOCOL.md`, CI-Konfiguration,
   Framework-Skripten (`scripts/glossar_gate.sh`, `scripts/preflight.sh`, `scripts/preflight-calibrate.sh`, `scripts/preflight-dedup.sh`, `scripts/measure-run.sh`, `scripts/ci/*.sh`) ·

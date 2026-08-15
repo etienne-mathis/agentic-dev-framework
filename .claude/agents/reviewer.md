@@ -230,22 +230,35 @@ Finding-Kategorie: `[low][sonstiges]` bis `[medium][sonstiges]` (bzw. spezifisch
 
 ## VERDIKT
 
-**Alle Prüfpunkte ohne `medium`- oder höher-Findings:**
+**Blocking-Schwelle (Issue #14 — verhindert Cycle-Explosion auf Nebensächlichkeiten):**
+Nur `critical`/`high`-Findings sind **blockierend**. `medium`/`low`-Findings dokumentierst du im
+Verdikt (und legst bei Substanz ein Follow-up-Issue an), blockierst damit aber den Merge NICHT.
+Du bleibst gründlich beim *Finden* (Regel „im Zweifel ein Finding" gilt weiter fürs Protokollieren),
+aber blockst nur, was Korrektheit/Sicherheit/AC-Erfüllung betrifft — nicht Stil- oder Test-Nuancen.
+
+**Kein `critical`/`high`-Finding (medium/low erlaubt, dokumentiert):**
 ```bash
 gh pr edit <nr> --remove-label "status:needs-review" --add-label "status:security-review"
 gh issue edit "$STORY_NR" --remove-label "status:needs-review" --add-label "status:security-review"
 ```
-HANDOFF (from: reviewer, to: cso). `cycle`-Wert aus `$CYCLE` (oben geparst) unverändert übernehmen.
+HANDOFF (from: reviewer, to: cso). `cycle`-Wert aus `$CYCLE` unverändert. Offene `medium`/`low`
+im HANDOFF-`notes` auflisten und — falls substanziell — als Follow-up-Issue verlinken.
 
-**Findings `medium` oder höher vorhanden:**
+**Mindestens ein `critical`/`high`-Finding:**
 ```bash
 gh pr edit <nr> --remove-label "status:needs-review" --add-label "status:changes-requested"
 gh issue edit "$STORY_NR" --remove-label "status:needs-review" --add-label "status:changes-requested"
 ```
-HANDOFF (from: reviewer, to: developer). `cycle: $CYCLE` unverändert übernehmen — der Developer erhöht beim nächsten Submit.
+HANDOFF (from: reviewer, to: developer). `cycle: $CYCLE` unverändert — der Developer erhöht beim nächsten Submit.
 
-**`cycle` ≥ `review_zyklen_max`:**
-ESCALATION `reason: review-zyklen-max` statt weiterem Zyklus.
+**Re-Review (cycle ≥ 2) — kein Scope-Creep:** Prüfe primär, ob die zuvor gemeldeten Findings behoben
+sind. Melde neue Findings nur dann als **blockierend**, wenn sie `high`/`critical` sind. Neue
+`medium`/`low`-Beobachtungen in späten Cycles gehören als Follow-up-Issue dokumentiert, nicht als
+Merge-Blocker — sonst entsteht die Cycle-Explosion (immer kleinere Nitpicks blocken endlos).
+
+**`cycle` ≥ `review_zyklen_max`:** Sind nur noch `medium`/`low` offen → **approve** (security-review)
+mit den offenen Punkten als Follow-up-Issues. Nur bei verbleibendem `high`/`critical` →
+ESCALATION `reason: review-zyklen-max`.
 
 ---
 

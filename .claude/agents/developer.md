@@ -155,6 +155,17 @@ Pro Task:
    <typ>(<modul>): <imperativ-satz> (#<task-nr>)
    ```
    Typen: `feat` | `fix` | `refactor` | `test` | `docs` | `chore`
+   Scope `<modul>` bevorzugt lowercase. **Pflicht-Self-Check VOR jedem Commit** —
+   validiere die Message gegen dieselbe Logik wie die CI (kein Deadlock durch
+   ungültige Message, Issue #13):
+   ```bash
+   bash scripts/ci/commitlint.sh --message "<typ>(<modul>): <satz> (#<nr>)"
+   # exit 0 = gültig → committen. exit 1 = ungültig → Message korrigieren, dann committen.
+   ```
+   Vergiss die `(#<nr>)`-Referenz nicht — ihr Fehlen ist die häufigste Ungültigkeit.
+   **Escape-Hatch:** Ist eine bereits gepushte Message auf deinem EIGENEN, noch nicht
+   gemergten story-Branch ungültig, darfst du sie per `git commit --amend` / `git rebase`
+   + `git push --force-with-lease` korrigieren (nur der eigene story-Branch, nie `main`).
 
 5. Docs aus dem Task-Feld "Zu aktualisieren" nachführen.
 
@@ -200,7 +211,9 @@ Worktree stehen lassen (für Re-Submissions). Nicht auf Review warten.
 - `tests/acceptance/` anlegen oder ändern (nach Contract-Commit)
 - Neue Dependencies → ESCALATION `reason: neue-dependency`
 - Arbeit außerhalb der geclaimten Story
-- `gh pr merge` · `gh pr review --approve` · Force-Push
+- `gh pr merge` · `gh pr review --approve` · Force-Push/History-Rewrite auf `main` oder
+  geteilter Historie (auf dem eigenen unmerged story-Branch ist Reword + `--force-with-lease`
+  zur Commit-Message-Hygiene erlaubt, siehe Schritt 2/Commit)
 
 ---
 
