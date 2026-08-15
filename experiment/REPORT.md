@@ -1,7 +1,8 @@
 # Head-to-Head-Report: Framework vs. Single-AI (P3.4)
 
-> Status: **In Arbeit** — triviale Stufe (T1, T2) vollständig; mittlere Stufe (T3) qualitativ
-> charakterisiert (Arm A cycle-heavy, nicht bis Merge gegrindet). T4–T7 offen. Tabellen aus
+> Status: **Kern-Aussage erreicht.** Triviale Stufe (T1, T2) + komplexe Stufe (T7) als Paare gemessen;
+> mittlere Stufe (T3) qualitativ charakterisiert. T4/T5/T6 bewusst nicht gefahren (Kosten/Nutzen — die
+> Aussage ist über triviale+komplexe Paare + T3-Charakterisierung robust genug). Aggregation via
 > `bash experiment/collect.sh`.
 
 Datum des Laufs: 2026-08-14 · Repo: G13 · Framework-Stand: nach Phase 0–3 + Fast-Lane-Fix (gehärtet)
@@ -20,12 +21,15 @@ Repo-Slug isoliert hier nicht). Fairness-Regeln siehe `README.md`.
 
 ## Ergebnisse
 
+Erfasst: **triviale Stufe** T1, T2 (beide Arme) + **komplexe Stufe** T7 (beide Arme). Mittlere Stufe
+(T3) qualitativ charakterisiert (Arm A cycle-heavy, nicht als Paar gemessen). Aggregation via `collect.sh`.
+
 ### Gesamt je Arm
 
 | Arm | n | Tokens Σ | Tokens med | Wall med (s) | Zyklen Σ | Eingriffe Σ | Findings Σ | Escaped Σ | CI grün | Konv. ok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| A (Framework) | 2 | 279758 | 139879 | 533 | 2 | 2 | 0 | 0 | 2/2 | 2/2 |
-| B (Single-AI) | 2 | 36097 | 18048 | 20 | 0 | 0 | 0 | 0 | 2/2 | 2/2 |
+| A (Framework) | 3 | 495120 | 163879 | 550 | 3 | 4 | 4 | 0 | 3/3 | 3/3 |
+| B (Single-AI) | 3 | 66097 | 18920 | 27 | 0 | 0 | 0 | 0 | 3/3 | 3/3 |
 
 ### Je Komplexität × Arm
 
@@ -33,13 +37,19 @@ Repo-Slug isoliert hier nicht). Fairness-Regeln siehe `README.md`.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | trivial | A | 2 | 279758 | 139879 | 533 | 2 | 2 | 0 | 0 | 2/2 | 2/2 |
 | trivial | B | 2 | 36097 | 18048 | 20 | 0 | 0 | 0 | 0 | 2/2 | 2/2 |
+| komplex | A | 1 | 215362 | 215362 | 5045 | 1 | 2 | 4 | 0 | 1/1 | 1/1 |
+| komplex | B | 1 | 30000* | 30000* | 30 | 0 | 0 | 0 | 0 | 1/1 | 1/1 |
 
-### Kern-Gegenüberstellung (triviale Stufe)
+\* Arm-B-Tokens bei T7 durch Session-Limit ungemessen — geschätzt (~30s/3 tool-uses, Impl vollständig+korrekt).
+Das exakte Token-Verhältnis der komplexen Stufe ist damit unsicher; die **Qualitäts-Aussage (escaped=0
+beide)** ist es nicht.
 
-- Escaped defects: Arm A = 0 · Arm B = 0
-- Menschliche Eingriffe: Arm A = 2 (je 1 Merge) · Arm B = 0
-- Tokens gesamt: Arm A = 279.758 · Arm B = 36.097
-- **Token-Verhältnis A/B = 7,75× (Framework teurer)** · Wall-Clock ~27× langsamer (533s vs. 20s)
+### Kern-Gegenüberstellung (gesamt)
+
+- Escaped defects: Arm A = 0 · Arm B = 0 (über ALLE gemessenen Paare)
+- Menschliche Eingriffe: Arm A = 4 · Arm B = 0
+- Tokens gesamt: Arm A = 495.120 · Arm B ≈ 66.097
+- **Token-Verhältnis A/B ≈ 7,5× (Framework teurer)** · Wall-Clock ~20–160× langsamer je Task
 
 ## Auswertung (ehrliches Zwischenfazit — triviale Stufe)
 
@@ -119,12 +129,69 @@ zu ersticken. **Konkreter Verbesserungsbedarf:** (a) Cycle-Cap / Severity-Schwel
 Merge nicht blocken), (b) Commit-Deadlock beheben (#13), (c) stärkeres Modell-Tier für mittlere Tasks statt
 Haiku (der Preflight unterschätzt In-Place-Modifikationen und empfahl fälschlich Haiku).
 
+## Komplexe Stufe (T7, Lagerbestand-Reservierung / Überverkauf) — der entscheidende Test
+
+Hypothese vor dem Lauf: Bei komplexen Tasks (Nebenläufigkeit, Invarianten) produziert der Single-AI
+escaped defects, die das Framework fängt → hier rechtfertigt sich der Overhead. **Ergebnis: widerlegt
+für ein fähiges Modell.**
+
+- **Arm A (Framework, Sonnet):** ARCHITECT → DEVELOPER (1 Durchlauf, **0 Review-Cycles**) → REVIEWER
+  (APPROVE, 2 medium + 2 low, alle non-blocking → Follow-up #42) → CSO (PASS) → Merge. Der REVIEWER
+  prüfte die Nebenläufigkeit fundiert (await-Punkte, Double-Free, Timeout-Race) und fand **kein**
+  critical/high-Problem. ~215k Tokens.
+- **Arm B (Single-AI, Sonnet):** race-sichere Implementierung eigenständig korrekt gelöst — synchroner
+  kritischer Abschnitt (kein `await` zwischen Bestandsprüfung und Abzug), idempotentes `release`,
+  no-op-Timeout nach manueller Freigabe. **4/4 Verhaltens-ACs grün, Lint sauber, 0 escaped defects.** ~30s.
+
+**Kernaussage:** Beide Arme lieferten korrekten, race-sicheren Code. Das Framework fing nichts, weil das
+fähige Modell nichts falsch machte. Der 0-Review-Cycle-Verlauf (dank #14-Fix) war sauber, aber der
+~7×-Overhead kaufte hier **Audit-Trail + Konsistenz, nicht Defekt-Vermeidung**.
+
+**Der #14-Fix wirkt (Kontrast zu T3):** Bei T7 blockierten die 2 medium + 2 low Findings den Merge NICHT
+(→ Follow-up-Issue), 0 Cycles. Bei T3 (vor dem Fix) trieben genau solche Findings 3 Cycles. Die
+Cycle-Explosion ist behoben.
+
+## Gesamtfazit (revidiert, ehrlich)
+
+Die ursprüngliche Effizienz-These („Pipeline besser/effizienter als Single-AI") ist über die gemessenen
+Paare **nicht belegt** — im Gegenteil: Single-AI erreichte **identische Qualität (0 escaped defects) bei
+~7,5× weniger Tokens** über triviale UND komplexe Tasks.
+
+Der eigentliche Erkenntnisgewinn ist eine **Neuformulierung der Framework-Nische**:
+
+- **Der Framework-Nutzen ist eine Funktion der Modell-Schwäche relativ zur Aufgabe, nicht der
+  Task-Komplexität allein.** Wo Defekte auftraten (T3, mittlere Stufe, **Haiku**), fing das Framework sie
+  (CI-Regression, ac3-Scheinabdeckung). Wo ein fähiges Modell (**Sonnet**) sauber lieferte (T7, komplex),
+  fing das Framework nichts — es gab nichts zu fangen.
+- **Konsequenz für das Produkt:** Das Framework rechtfertigt seinen Overhead nicht über „schwere Tasks",
+  sondern über **(a) schwache/billige Modelle, (b) Audit-/Compliance-Pflicht (nachvollziehbare Rollen,
+  Verdikte, Guards), (c) mehrdeutige Anforderungen** (wo ARCHITECT/REVIEWER echten Wert schaffen). Für
+  fähige Modelle auf gut spezifizierten Tasks ist **Single-AI + starker Referee (Contract + CI)** — die
+  „Solo-Lane" — effizienter, unabhängig von der Komplexität.
+- **Revidierte Solo-Lane-Empfehlung:** Nicht nur für triviale Tasks. Default = Single-AI + Contract/CI;
+  Eskalation in die volle Pipeline nur bei (a)/(b)/(c) oben. Das dreht die Standardannahme um.
+
+Wichtige Einschränkungen dieser Aussage siehe Threats to Validity — insbesondere n=1 je Komplexität,
+ungemessene T7-B-Tokens und die Modell-Abhängigkeit (die selbst der zentrale Befund ist).
+
 ## Threats to Validity
 
-- Kleine Stichprobe (7 Tasks, ein Repo, ein Stack). Keine statistische Signifikanz, nur Indikation.
-- Ein Operator, eine Modell-Familie, ein Zeitraum. Reihenfolge-/Lerneffekte teils gemischt, nicht eliminiert.
-- Escaped defects hängen an der Qualität des Contracts (Referee-Güte). Contract-Lücken verzerren beide Arme gleich, aber nicht neutral gegenüber der Realität.
-- Token-Kosten via lokale Session-jsonl gemessen; Cache-Read-Anteile sind modell-/kontextabhängig.
+- **n=1 je Komplexität** (trivial n=2, komplex n=1, mittel als Paar gar nicht gemessen). Keine
+  statistische Signifikanz — Indikation, kein Beweis.
+- **Modell-Confound (zugleich der zentrale Befund):** Arm A und Arm B liefen bei T7 auf Sonnet, T3-Arm-A
+  auf Haiku. Die Beobachtung „Defekte bei Haiku (T3), keine bei Sonnet (T7)" vermischt Komplexität und
+  Modell-Tier. Genau diese Vermischung deutet aber auf die Modell-Abhängigkeit hin — sie sauber zu
+  trennen bräuchte ein 2×2-Design (Haiku/Sonnet × mittel/komplex).
+- **T7-B-Tokens ungemessen** (Session-Limit) → das Token-Verhältnis der komplexen Stufe ist geschätzt.
+  Die Qualitäts-Aussage (escaped=0) beruht auf empirischen Verhaltens-Tests, nicht auf der Schätzung.
+- **Referee-Asymmetrie:** Arm B wurde bei T7 gegen **Verhaltens-ACs** (nicht den Arm-A-frozen-Contract)
+  bewertet, weil Arm B eine andere, ebenso valide API wählte. Das ist fairer (misst Verhalten statt
+  Signatur), aber weicht vom „identischen Contract"-Ideal ab.
+- Escaped defects hängen an der Güte des Referees. T3 zeigte: ein Contract kann eine Abdeckung nur
+  vortäuschen (ac3) — dann ist das Arm-B-Netz schwächer als es scheint (der REVIEWER fing es in Arm A).
+- Ein Operator, ein Repo, ein Stack, ein Zeitraum. Mehrere Arm-A-Läufe brauchten Operator-Rettung
+  (Deadlocks, Contract-Restore) — diese Fragilität ist teils G13-spezifisch (ci.yml-Drift), teils
+  Framework-Gap (inzwischen #12/#13/#14 behoben).
 
 ## Rohdaten
 

@@ -18,3 +18,5 @@ T1	A	trivial	163879	0	0	550	1	1	0	0	ja	100	ja	Arm A voll (4 Rollen); +1 unmeasur
 T1	B	trivial	18920	0	0	27	0	0	0	0	ja	100	ja	Single-AI Haiku; frozen Contract 8/8; Lint sauber
 T2	A	trivial	115879	0	0	517	1	1	0	0	ja	100	ja	Arm A Fast-Lane (reduzierte Reviewer-Tiefe); CSO-Tokens unmeasured (Limit)
 T2	B	trivial	17177	0	0	14	0	0	0	0	ja	100	ja	Single-AI Haiku; frozen Contract 3/3; Lint sauber
+T7	A	komplex	215362	0	0	5045	1	2	4	0	ja	-	ja	Arm A voll; 0 Review-Cycles; Findings 2med+2low non-blocking (Follow-up #42); Operator: contract-baseline-restore + merge; separat ci.yml-Drift-Fix
+T7	B	komplex	30000	0	0	30	0	0	0	0	ja	-	ja	Single-AI Sonnet; race-sicher; 4/4 Verhaltens-ACs + Lint gruen; TOKENS GESCHAETZT (Session-Limit bei Report, ~30s/3 tool-uses)
